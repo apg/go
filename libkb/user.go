@@ -80,11 +80,12 @@ type User struct {
 	privateKeys *jsonw.Wrapper
 
 	// Processed fields
-	id       UID
-	name     string
-	sigChain *SigChain
-	IdTable  *IdentityTable
-	sigHints *SigHints
+	id        UID
+	name      string
+	sigChain  *SigChain
+	IdTable   *IdentityTable
+	sigHints  *SigHints
+	keyFamily *KeyFamily
 
 	loggedIn bool // if we were logged in when we loaded it
 	secret   bool // if we asked for secret keys when we loaded
@@ -190,11 +191,17 @@ func NewUser(o *jsonw.Wrapper) (*User, error) {
 		return nil, fmt.Errorf("user object for %s lacks a name", uid.ToString())
 	}
 
+	kf, err := ParseKeyFamily(o.AtKey("public_keys"))
+	if err != nil {
+		return nil, err
+	}
+
 	return &User{
 		basics:      o.AtKey("basics"),
 		publicKeys:  o.AtKey("public_keys"),
 		sigs:        o.AtKey("sigs"),
 		privateKeys: o.AtKey("private_keys"),
+		keyFamily:   kf,
 		id:          *uid,
 		name:        name,
 		loggedIn:    false,

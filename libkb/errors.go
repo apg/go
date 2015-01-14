@@ -576,3 +576,13 @@ func (e KeyGenError) Error() string {
 }
 
 //=============================================================================
+
+type KeyFamilyError struct {
+	msg string
+}
+
+func (e KeyFamilyError) Error() string {
+	return fmt.Sprintf("Bad key family: %s", e.msg)
+}
+
+//=============================================================================

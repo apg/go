@@ -3,6 +3,11 @@
 // There also can be some subkeys dangling off for ECDH.
 package libkb
 
+import (
+	"encoding/json"
+	"github.com/keybase/go-jsonw"
+)
+
 // As returned by user/lookup.json
 type ServerKeyRecord struct {
 	Kid            string  `json:"kid"`
@@ -21,7 +26,29 @@ type ServerKeyRecord struct {
 }
 
 // As returned by user/lookup.json
-type ServerKeys struct {
-	Sibkeys map[interface{}]ServerKeyRecord `json:"sibkeys"`
-	Subkeys map[interface{}]ServerKeyRecord `json:"subkeys"`
+type KeyFamily struct {
+	eldest_kid *KID
+	Sibkeys    map[string]ServerKeyRecord `json:"sibkeys"`
+	Subkeys    map[string]ServerKeyRecord `json:"subkeys"`
+}
+
+func ParseKeyFamily(jw *jsonw.Wrapper) (ret *KeyFamily, err error) {
+	var tmp []byte
+	if jw == nil && jw.IsNil() {
+		err = KeyFamilyError{"nil record from server"}
+	}
+
+	// Somewhat wasteful but probably faster than using Jsonw wrappers,
+	// and less error-prone
+	if tmp, err = jw.Marshal(); err != nil {
+		return
+	}
+
+	var obj KeyFamily
+
+	if err = json.Unmarshal(tmp, &obj); err == nil {
+		ret = &obj
+	}
+
+	return
 }
