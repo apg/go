@@ -88,25 +88,23 @@ func ParseKeyFamily(jw *jsonw.Wrapper) (ret *KeyFamily, err error) {
 func (skr *ServerKeyRecord) ImportKey() (err error) {
 	switch skr.KeyAlgo {
 	case KID_PGP_RSA, KID_PGP_RSA, KID_PGP_ELGAMAL, KID_PGP_DSA, KID_PGP_ECDH, KID_PGP_ECDSA:
-		var pgp *PgpKeyBundle
-		if pgp, err = ReadOneKeyFromString(skr.Bundle); err == nil {
-			skr.key = pgp
-		}
+		skr.key, err = ReadOneKeyFromString(skr.Bundle)
 	case KID_NACL_EDDSA:
-		var ns NaclSigningKeyPair
-		if ns, err = ImportNaclSigningKeyPair(skr.Bundle); err == nil {
-			skr.key = ns
-		}
+		skr.key, err = ImportNaclSigningKeyPair(skr.Bundle)
 	case KID_NACL_DH:
-		var nd NaclDHKeyPair
-		if nd, err = ImportNaclDHKeyPair(skr.Bundle); err == nil {
-			skr.key = nd
-		}
+		skr.key, err = ImportNaclDHKeyPair(skr.Bundle)
 	default:
 		err = BadKeyError{fmt.Sprintf("algo=%d is unknown", skr.KeyAlgo)}
 	}
 	if err == nil {
 		G.Log.Debug("| Imported Key %s", skr.key.GetKid().ToString())
+	}
+	return
+}
+
+func (kf KeyFamily) GetSigningKey(kid_s string) (ret GenericKey) {
+	if skr, found := kf.Sibkeys[kid_s]; found {
+		ret = skr.key
 	}
 	return
 }
