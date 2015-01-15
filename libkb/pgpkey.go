@@ -6,7 +6,6 @@ import (
 	"encoding/hex"
 	"fmt"
 	"github.com/keybase/go-jsonw"
-	"github.com/keybase/go-triplesec"
 	"github.com/keybase/protocol/go"
 	"golang.org/x/crypto/openpgp"
 	"golang.org/x/crypto/openpgp/armor"
@@ -267,32 +266,6 @@ func (k PgpKeyBundle) UsersDescription() []string {
 	return []string{"user: " + pri}
 }
 
-type KID []byte
-type KID2 []byte
-
-type GenericKey interface {
-	GetKid() KID
-	GetFingerprintP() *PgpFingerprint
-	GetAlgoType() int
-	SignToString([]byte) (string, *SigId, error)
-	ToP3SKB(ts *triplesec.Cipher) (*P3SKB, error)
-	VerboseDescription() string
-	CheckSecretKey() error
-	Encode() (string, error) // encode public key to string
-}
-
-func (k KID) ToMapKey() string {
-	return k.ToString()
-}
-
-func (k KID) ToString() string {
-	return hex.EncodeToString(k)
-}
-
-func (k KID) ToBytes() []byte {
-	return []byte(k)
-}
-
 func (k *PgpKeyBundle) CheckSecretKey() (err error) {
 	if k.PrivateKey == nil {
 		err = NoKeyError{"no private key found"}
@@ -429,15 +402,6 @@ func (p *PgpKeyBundle) CheckFingerprint(fp *PgpFingerprint) (err error) {
 
 func (key *PgpKeyBundle) SignToString(payload []byte) (out string, id *SigId, err error) {
 	return SimpleSign(payload, *key)
-}
-
-func WriteP3SKBToKeyring(k GenericKey, tsec *triplesec.Cipher, lui LogUI) (p3skb *P3SKB, err error) {
-	if G.Keyrings == nil {
-		err = NoKeyringsError{}
-	} else if p3skb, err = k.ToP3SKB(tsec); err == nil {
-		err = G.Keyrings.P3SKB.PushAndSave(p3skb, lui)
-	}
-	return
 }
 
 func ExportAsFOKID(fp *PgpFingerprint, kid KID) (ret keybase_1.FOKID) {
