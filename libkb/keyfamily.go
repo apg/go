@@ -9,6 +9,13 @@ import (
 	"github.com/keybase/go-jsonw"
 )
 
+type ComputedKeyInfo struct {
+	Status      int
+	Eldest      bool
+	Delegations map[SigId]KID
+	Revocations map[SigId]KID
+}
+
 // As returned by user/lookup.json
 type ServerKeyRecord struct {
 	Kid            string  `json:"kid"`
@@ -30,6 +37,14 @@ type ServerKeyRecord struct {
 
 type KeyMap map[string]ServerKeyRecord
 
+// When we play a sigchain forward, it yields ComputeKeyInfo. We're going to
+// store CKIs separately from the keys, since the server can clobber the
+// former.  We should rewrite CKIs every time we (re)check a user's SigChain
+type ComputedKeyInfos struct {
+	dirty bool // whether it needs to be written to disk or not
+	Infos map[string]ComputedKeyInfo
+}
+
 // As returned by user/lookup.json
 type KeyFamily struct {
 	eldest_kid *KID
@@ -37,24 +52,24 @@ type KeyFamily struct {
 	Subkeys    KeyMap `json:"subkeys"`
 }
 
-func (km KeyMap) ImportKeys() (err error) {
+func (km KeyMap) Import() (err error) {
 	for _, v := range km {
-		if err = v.ImportKey(); err != nil {
+		if err = v.Import(); err != nil {
 			return
 		}
 	}
 	return
 }
 
-func (kf *KeyFamily) ImportKeys() (err error) {
+func (kf *KeyFamily) Import() (err error) {
 	G.Log.Debug("+ ImportKeys")
 	defer func() {
 		G.Log.Debug("- ImportKeys -> %s", ErrToOk(err))
 	}()
-	if err = kf.Sibkeys.ImportKeys(); err != nil {
+	if err = kf.Sibkeys.Import(); err != nil {
 		return
 	}
-	if err = kf.Subkeys.ImportKeys(); err != nil {
+	if err = kf.Subkeys.Import(); err != nil {
 		return
 	}
 	return
@@ -78,14 +93,14 @@ func ParseKeyFamily(jw *jsonw.Wrapper) (ret *KeyFamily, err error) {
 		return
 	}
 
-	if err = obj.ImportKeys(); err != nil {
+	if err = obj.Import(); err != nil {
 		return
 	}
 	ret = &obj
 	return
 }
 
-func (skr *ServerKeyRecord) ImportKey() (err error) {
+func (skr *ServerKeyRecord) Import() (err error) {
 	switch skr.KeyAlgo {
 	case KID_PGP_RSA, KID_PGP_RSA, KID_PGP_ELGAMAL, KID_PGP_DSA, KID_PGP_ECDH, KID_PGP_ECDSA:
 		skr.key, err = ReadOneKeyFromString(skr.Bundle)
