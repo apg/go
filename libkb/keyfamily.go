@@ -42,6 +42,8 @@ type KeyMap map[string]ServerKeyRecord
 // former.  We should rewrite CKIs every time we (re)check a user's SigChain
 type ComputedKeyInfos struct {
 	dirty bool // whether it needs to be written to disk or not
+
+	// Map of KID (in HEX) to a computed info
 	Infos map[string]ComputedKeyInfo
 }
 
