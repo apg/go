@@ -414,5 +414,4 @@ func ExportAsFOKID(fp *PgpFingerprint, kid KID) (ret keybase_1.FOKID) {
 		ret.Kid = &b
 	}
 	return
-
 }

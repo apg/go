@@ -27,6 +27,14 @@ func (k KID) ToString() string {
 	return hex.EncodeToString(k)
 }
 
+func ImportKID(s string) (ret KID, err error) {
+	var tmp []byte
+	if tmp, err = hex.DecodeString(s); err == nil {
+		ret = KID(tmp)
+	}
+	return
+}
+
 func (k KID) ToBytes() []byte {
 	return []byte(k)
 }

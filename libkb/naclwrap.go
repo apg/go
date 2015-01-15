@@ -59,6 +59,43 @@ type NaclDHKeyPair struct {
 	Private *NaclDHKeyPrivate
 }
 
+func importNacl(s string, typ byte, bodyLen int) (ret []byte, err error) {
+	var kid KID
+	if kid, err = ImportKID(s); err != nil {
+		return
+	}
+	l := len(kid)
+	if l != bodyLen+3 {
+		err = BadKeyError{fmt.Sprintf("Wrong length; wanted %d, got %d", l, bodyLen+3)}
+		return
+	}
+
+	if kid[0] != byte(KEYBASE_KID_V1) || kid[l-1] != byte(ID_SUFFIX_KID) || kid[1] != typ {
+		err = BadKeyError{"bad header or trailer bytes"}
+		return
+	}
+	ret = kid[2:(l - 1)]
+	return
+}
+
+func ImportNaclSigningKeyPair(s string) (ret NaclSigningKeyPair, err error) {
+	var body []byte
+	if body, err = importNacl(s, byte(KID_NACL_EDDSA), ed25519.PublicKeySize); err != nil {
+		return
+	}
+	copy(ret.Public[:], body)
+	return
+}
+
+func ImportNaclDHKeyPair(s string) (ret NaclDHKeyPair, err error) {
+	var body []byte
+	if body, err = importNacl(s, byte(KID_NACL_DH), NACL_DH_KEYSIZE); err != nil {
+		return
+	}
+	copy(ret.Public[:], body)
+	return
+}
+
 func (k NaclDHKeyPublic) GetKid() KID {
 	prefix := []byte{
 		byte(KEYBASE_KID_V1),
