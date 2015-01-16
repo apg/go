@@ -48,7 +48,7 @@ type ServerKeyRecord struct {
 	key GenericKey `json:-`
 }
 
-type KeyMap map[string]*ServerKeyRecord
+type KeyMap map[string]ServerKeyRecord
 
 // When we play a sigchain forward, it yields ComputeKeyInfo. We're going to
 // store CKIs separately from the keys, since the server can clobber the
@@ -57,14 +57,14 @@ type ComputedKeyInfos struct {
 	dirty bool // whether it needs to be written to disk or not
 
 	// Map of KID (in HEX) to a computed info
-	Infos map[string]ComputedKeyInfo
+	Infos map[string]*ComputedKeyInfo
 }
 
 // As returned by user/lookup.json
 type KeyFamily struct {
 	eldest  *FOKID
 	pgps    []*PgpKeyBundle
-	pgp2kid map[string]string
+	pgp2kid map[string]KID
 
 	Sibkeys KeyMap `json:"sibkeys"`
 	Subkeys KeyMap `json:"subkeys"`
@@ -75,7 +75,7 @@ type ComputedKeyFamily struct {
 	cki *ComputedKeyInfos
 }
 
-func (cki *ComputedKeyInfos) Insert(f *FOKID, i *ComputeKeyInfo) {
+func (cki *ComputedKeyInfos) Insert(f *FOKID, i *ComputedKeyInfo) {
 	if f != nil {
 		v := f.ToStrings()
 		for _, s := range v {
@@ -104,7 +104,7 @@ func (kf KeyFamily) NewComputedKeyInfos() *ComputedKeyInfos {
 }
 
 // FindSibkey finds a sibkey in our KeyFamily, by either PGP fingerprint or
-// KID.  It returns the GenericKey object that's useful for actually performing
+// KID. It returns the GenericKey object that's useful for actually performing
 // PGP ops.
 func (kf KeyFamily) FindActiveSibkey(f FOKID) (key GenericKey, err error) {
 
@@ -119,7 +119,7 @@ func (kf KeyFamily) FindActiveSibkey(f FOKID) (key GenericKey, err error) {
 		}
 	}
 	if kid == nil {
-		err = NoKeyFound{"Can't lookup sibkey without a KID"}
+		err = NoKeyError{"Can't lookup sibkey without a KID"}
 		return
 	}
 
@@ -158,7 +158,7 @@ func (kf *KeyFamily) Import() (err error) {
 		return
 	}
 	for _, p := range kf.pgps {
-		kf.pgp2kid[p.PgpFingerprint] = p.Kid
+		kf.pgp2kid[p.GetFingerprint().ToString()] = p.GetKid()
 	}
 	err = kf.findEldest()
 	return
@@ -265,12 +265,12 @@ func (kf KeyFamily) GetSigningKey(kid_s string) (ret GenericKey) {
 
 func (ckf ComputedKeyFamily) FindActiveSibkey(f FOKID) (key GenericKey, err error) {
 	s := f.ToString()
-	if ki := ckf.ki.Infos[s]; ki == nil {
+	if ki := ckf.cki.Infos[s]; ki == nil {
 		err = NoKeyError{fmt.Sprintf("The key '%s' wasn't found", s)}
 	} else if ki.Status != KEY_LIVE {
 		err = BadKeyError{fmt.Sprintf("The key '%s' is no longer active", s)}
 	} else {
-		key, err = ckf.FindSibkey(f)
+		key, err = ckf.FindActiveSibkey(f)
 	}
 	return
 }

@@ -106,7 +106,7 @@ func (f FOKID) ToString() string {
 	}
 }
 
-func (k FOKID) ToStrings() (ret []string) {
+func (f FOKID) ToStrings() (ret []string) {
 	if f.Kid != nil {
 		ret = append(ret, f.Kid.ToString())
 	}

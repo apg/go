@@ -334,7 +334,7 @@ func (c *ChainLink) VerifySigWithKeyFamily(ckf ComputedKeyFamily) (cached bool, 
 	if sigId, err = key.Verify(c.unpacked.sig, []byte(c.unpacked.payloadJsonStr)); err != nil {
 		return
 	}
-	c.unpacked.sigId = *sig_id
+	c.unpacked.sigId = *sigId
 
 	return
 }

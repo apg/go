@@ -314,14 +314,13 @@ func verifySubchain(kf KeyFamily, links []*ChainLink) (cached bool, cki *Compute
 
 	cki = kf.NewComputedKeyInfos()
 
-	ckf = ComputedKeyFamily{&kf, cki}
+	ckf := ComputedKeyFamily{&kf, cki}
 
 	var prev *ChainLink
 	var prev_fokid *FOKID
 
-	for i, link := range links {
+	for _, link := range links {
 
-		checkSig := false
 		new_fokid := link.ToFOKID()
 
 		tcl, w := NewTypedChainLink(link)
@@ -331,6 +330,10 @@ func verifySubchain(kf KeyFamily, links []*ChainLink) (cached bool, cki *Compute
 
 		if tcl.IsDelegation() {
 			_, err = link.VerifySigWithKeyFamily(ckf)
+
+			// XXX TODO XXX
+			//
+			// If it worked, then add the new sig into the key family.
 		}
 
 		if prev_fokid != nil && !prev_fokid.Eq(new_fokid) {
@@ -346,7 +349,11 @@ func verifySubchain(kf KeyFamily, links []*ChainLink) (cached bool, cki *Compute
 	}
 
 	// Always verify the last...
-	_, err = prev.VerifySigWithKeyFamily(ckf)
+	_, err = last.VerifySigWithKeyFamily(ckf)
+
+	// XXX TODO XXX
+	//
+	// Now add the result back into the cache for the last link
 
 	return
 }
@@ -372,19 +379,22 @@ func (sc *SigChain) VerifySigsAndComputeKeys(ckf *ComputedKeyFamily) (cached boo
 		return
 	}
 
-	if cached, ckf.ki, err = verifySubchain(*ckf.kf, links); err == nil {
+	if cached, ckf.cki, err = verifySubchain(*ckf.kf, links); err == nil {
 		return
 	}
 
-	if err = sc.VerifyId(key); err != nil {
-		return
-	}
+	// XXX TODO XXX
+	//
+	// Verify the ID of the User given the active PGP keys in the key family
+	// and also the links of the chained with signed-in usernames.
+	// Use to be:
+	//
+	// if err = sc.VerifyId(key); err != nil {
+	// 	return
+	// }
+	//
 
-	if last := sc.GetLastLink(); last != nil {
-		cached, err = last.VerifySig(*key)
-	}
-
-	G.Log.Debug("- VerifyWithKey for user %s -> %v", uid_s, (err == nil))
+	G.Log.Debug("- VerifySigsAndComputeKeys for user %s -> %v", uid_s, (err == nil))
 
 	return
 }
@@ -488,9 +498,9 @@ func (l *SigChainLoader) LoadLinksFromStorage() (err error) {
 		}
 		fp2 := link.GetPgpFingerprint()
 		if loadFp == nil {
-			loadFp = &fp2
+			loadFp = fp2
 			G.Log.Debug("| Setting loadFp=%s", fp2.ToString())
-		} else if !l.allKeys && loadFp != nil && !loadFp.Eq(fp2) {
+		} else if !l.allKeys && loadFp != nil && !loadFp.Eq(*fp2) {
 			good_key = false
 			G.Log.Debug("| Stop loading at fp=%s (!= fp=%s)", loadFp.ToString(), fp2.ToString())
 		} else {
@@ -665,7 +675,7 @@ func (l *SigChainLoader) Load() (ret *SigChain, err error) {
 	}
 
 	stage("GetFingerprint")
-	if err = l.GetFingerprint(); err != nil {
+	if err = l.GetKeyFamily(); err != nil {
 		return
 	}
 
