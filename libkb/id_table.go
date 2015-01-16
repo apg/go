@@ -19,6 +19,7 @@ type TypedChainLink interface {
 	ToDisplayString() string
 	IsRevocationIsh() bool
 	IsRevoked() bool
+	IsDelegation() bool
 	GetSeqno() Seqno
 	GetCTime() time.Time
 	GetPgpFingerprint() *PgpFingerprint
@@ -53,6 +54,7 @@ func (b *GenericChainLink) ToDebugString() string {
 }
 
 func (g *GenericChainLink) IsRevocationIsh() bool { return false }
+func (g *GenericChainLink) IsDelegation() bool    { return false }
 func (g *GenericChainLink) IsRevoked() bool       { return g.revoked }
 func (g *GenericChainLink) GetSeqno() Seqno       { return g.unpacked.seqno }
 func (g *GenericChainLink) GetPgpFingerprint() *PgpFingerprint {
@@ -429,8 +431,65 @@ func (l *TrackChainLink) ToServiceBlocks() (ret []*ServiceBlock) {
 //=========================================================================
 
 //=========================================================================
-// UntrackChainLink
+// SibkeyChainLink
 //
+
+type SibkeyChainLink struct {
+	GenericChainLink
+	kid KID
+}
+
+func ParseSibkeyChainLink(b GenericChainLink) (ret *SibkeyChainLink, err error) {
+	var kid KID
+	if kid, err = GetKID(b.payloadJson.AtPath("body.sibkey.kid")); err != nil {
+		err = fmt.Errorf("Bad sibkey statement @%s: %s", b.ToDebugString(), err.Error())
+	} else {
+		ret = &SibkeyChainLink{b, kid}
+	}
+	return
+
+}
+
+func (s *SibkeyChainLink) Type() string { return "sibkey" }
+
+func (r *SibkeyChainLink) ToDisplayString() string {
+	return r.kid.ToString()
+}
+
+func (s *SibkeyChainLink) IsDelegation() bool { return true }
+
+//
+//=========================================================================
+// SubkeyChainLink
+
+type SubkeyChainLink struct {
+	GenericChainLink
+	kid KID
+}
+
+func ParseSubkeyChainLink(b GenericChainLink) (ret *SubkeyChainLink, err error) {
+	var kid KID
+	if kid, err = GetKID(b.payloadJson.AtPath("body.subkey.kid")); err != nil {
+		err = fmt.Errorf("Bad subkey statement @%s: %s", b.ToDebugString(), err.Error())
+	} else {
+		ret = &SubkeyChainLink{b, kid}
+	}
+	return
+}
+
+func (s *SubkeyChainLink) Type() string { return "subkey" }
+
+func (r *SubkeyChainLink) ToDisplayString() string {
+	return r.kid.ToString()
+}
+
+func (s *SubkeyChainLink) IsDelegation() bool { return true }
+
+//
+//=========================================================================
+
+//=========================================================================
+// UntrackChainLink
 
 type UntrackChainLink struct {
 	GenericChainLink
@@ -651,6 +710,10 @@ func (tab *IdentityTable) MarkCheckResult(err ProofError) {
 
 func NewTypedChainLink(cl *ChainLink) (ret TypedChainLink, w Warning) {
 
+	if ret = cl.typed; ret != nil {
+		return
+	}
+
 	base := GenericChainLink{cl}
 
 	s, err := cl.payloadJson.AtKey("body").AtKey("type").GetString()
@@ -668,6 +731,10 @@ func NewTypedChainLink(cl *ChainLink) (ret TypedChainLink, w Warning) {
 			ret, err = ParseCryptocurrencyChainLink(base)
 		case "revoke":
 			ret = &RevokeChainLink{base}
+		case "sibkey":
+			ret, err = ParseSibkeyChainLink(base)
+		case "subkey":
+			ret, err = ParseSubkeyChainLink(base)
 		default:
 			err = fmt.Errorf("Unknown signature type %s @%s", s, base.ToDebugString())
 		}
@@ -677,6 +744,8 @@ func NewTypedChainLink(cl *ChainLink) (ret TypedChainLink, w Warning) {
 		w = ErrorToWarning(err)
 		ret = &base
 	}
+
+	cl.typed = ret
 
 	// Basically we never fail, since worse comes to worse, we treat
 	// unknown signatures as "generic" and can still display them

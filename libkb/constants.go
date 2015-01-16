@@ -168,3 +168,11 @@ var (
 	REV_FULL          = 1
 	REV_DATED         = 2
 )
+
+// key_status
+var (
+	KEY_LIVE       = 0
+	KEY_REVOKED    = 1
+	KEY_DELETED    = 2
+	KEY_SUPERSEDED = 3
+)

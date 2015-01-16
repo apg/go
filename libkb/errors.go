@@ -132,6 +132,16 @@ func NewNeedInputError(s string, a ...interface{}) AssertionParseError {
 
 //=============================================================================
 
+type WrongKidError struct {
+	wanted, got KID
+}
+
+func (w WrongKidError) Error() string {
+	return fmt.Sprintf("Wanted KID=%s; but got KID=%s", w.wanted.ToString(), w.got.ToString())
+}
+
+//=============================================================================
+
 type WrongKeyError struct {
 	wanted, got *PgpFingerprint
 }
@@ -503,6 +513,12 @@ type KeyCannotSignError struct{}
 
 func (s KeyCannotSignError) Error() string {
 	return "Key cannot create signatures"
+}
+
+type KeyCannotVerifyError struct{}
+
+func (k KeyCannotVerifyError) Error() string {
+	return "Key cannot verify signatures"
 }
 
 //=============================================================================

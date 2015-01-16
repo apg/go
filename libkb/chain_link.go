@@ -73,6 +73,7 @@ type ChainLinkUnpacked struct {
 	sigId          SigId
 	uid            UID
 	username       string
+	typ            string
 }
 
 type ChainLink struct {
@@ -91,6 +92,8 @@ type ChainLink struct {
 	payloadJson *jsonw.Wrapper
 	unpacked    *ChainLinkUnpacked
 	lastChecked *CheckResult
+
+	typed TypedChainLink
 }
 
 func (c ChainLink) GetPrev() LinkId {
@@ -181,6 +184,7 @@ func (c *ChainLink) UnpackPayloadJson(tmp *ChainLinkUnpacked) (err error) {
 	c.payloadJson.AtPath("body.key.username").GetStringVoid(&tmp.username, &err)
 	GetUidVoid(c.payloadJson.AtPath("body.key.uid"), &tmp.uid, &err)
 	GetLinkIdVoid(c.payloadJson.AtKey("prev"), &tmp.prev, &err)
+	c.payloadJson.AtPath("body.type").GetStringVoid(&tmp.typ, &err)
 	c.payloadJson.AtKey("ctime").GetInt64Void(&tmp.ctime, &err)
 
 	c.payloadJson.AtKey("seqno").GetInt64Void(&sq, &err)
@@ -306,6 +310,34 @@ func (c ChainLink) GetSigId() *SigId {
 	} else {
 		return nil
 	}
+}
+
+func (c *ChainLink) VerifySigWithKeyFamily(ckf *ComputedKeyFamily) (cached bool, err error) {
+
+	if c.sigVerified {
+		G.Log.Debug("Skipped verification (cached): %s", c.id.ToString())
+		cached = true
+		return
+	}
+
+	var key GenericKey
+
+	if key, err = ckf.FindActiveKey(c.ToFOKID()); err != nil {
+		return
+	}
+
+	if sig_id, e2 := key.Verify(c.unpacked.sig,
+		[]byte(c.unpacked.payloadJsonStr)); e2 != nil {
+		err = e2
+		return
+	} else {
+		c.unpacked.sigId = *sig_id
+	}
+
+	c.sigVerified = true
+	c.dirty = true
+	return
+
 }
 
 func (c *ChainLink) VerifySig(k PgpKeyBundle) (cached bool, err error) {

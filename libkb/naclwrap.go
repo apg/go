@@ -238,6 +238,33 @@ func (s NaclSig) Verify() (err error) {
 	return
 }
 
+func (k NaclDHKeyPair) Verify(armored string, expected []byte) (sigId *SigId, err error) {
+	err = KeyCannotSignError{}
+	return
+}
+
+func (k NaclSigningKeyPair) Verify(armored string, expected []byte) (sigId *SigId, err error) {
+	var packet *KeybasePacket
+	var sig *NaclSig
+	var ok bool
+
+	if packet, err = DecodeArmoredPacket(armored); err != nil {
+		return
+	}
+	if sig, ok = packet.Body.(*NaclSig); !ok {
+		err = UnmarshalError{"NACL signature"}
+		return
+	}
+	if err = sig.Verify(); err != nil {
+		return
+	}
+	if !sig.Kid.Eq(k.GetKid()) {
+		err = WrongKidError{sig.Kid, k.GetKid()}
+		return
+	}
+	return
+}
+
 func (s *NaclSig) ArmoredEncode() (ret string, err error) {
 	return PacketArmoredEncode(s)
 }

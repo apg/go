@@ -7,13 +7,26 @@ import (
 	"encoding/json"
 	"fmt"
 	"github.com/keybase/go-jsonw"
+	"time"
 )
+
+// We have two notions of time we can use -- standard UTC which might
+// be screwy (skewy) based upon local clock problems; or MerkleRoot seqno,
+// which is totally ordered and all clients and server ought to agree on it.
+// The issue is that we're not uniformly signing Merkle roots into signatures,
+// especially those generated on the Web site.
+type KeybaseTime struct {
+	Utc   time.Time // UTC wallclock time
+	Chain int       // Merkle root chain time
+}
 
 type ComputedKeyInfo struct {
 	Status      int
 	Eldest      bool
 	Delegations map[SigId]KID
 	Revocations map[SigId]KID
+	Delegated   *KeybaseTime
+	Revoked     *KeybaseTime
 }
 
 // As returned by user/lookup.json
@@ -54,6 +67,24 @@ type KeyFamily struct {
 
 	Sibkeys KeyMap `json:"sibkeys"`
 	Subkeys KeyMap `json:"subkeys"`
+}
+
+type ComputedKeyFamily struct {
+	kf  *KeyFamily
+	cki *ComputedKeyInfos
+}
+
+// ProvisionEldest finds the eldest sibling in the family and marks
+// his status LIVE, so that he can be used to verify signatures. There's
+// obviously no one who can delegate to him, so we take it on faith.
+func (ckf *ComputedKeyFamily) ProvisionEldest() {
+	if ckf.kf.eldest != nil {
+		ckf.cki.Infos[ckf.kf.eldest.ToString()] = ComputedKeyInfo{
+			Eldest: true,
+			Status: KEY_LIVE,
+		}
+		ckf.cki.dirty = true
+	}
 }
 
 func (km KeyMap) Import(pgps_i []*PgpKeyBundle) (pgps_o []*PgpKeyBundle, err error) {

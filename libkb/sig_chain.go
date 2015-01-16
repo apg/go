@@ -298,11 +298,53 @@ func (sc *SigChain) LimitToKeyFamily(kf *KeyFamily) (links []*ChainLink) {
 	return
 }
 
-func verifySubchain(kf *KeyFamily, links []*ChainLink) (cki *ComputedKeyInfo, cached bool, err error) {
+// verifySubchain verifies the given subchain and outputs a yes/no answer
+// on whether or not it's well-formed, and also yields ComputedKeyInfos for
+// all keys found in the process, including those that are now retired.
+func verifySubchain(ckf *ComputedKeyFamily, links []*ChainLink) (cached bool, err error) {
+
+	if links == nil || len(links) == 0 {
+		return
+	}
+
+	ckf.ProvisionEldest()
+
+	var prev *ChainLink
+	var prev_fokid *FOKID
+
+	for i, link := range links {
+
+		checkSig := false
+		new_fokid := link.ToFOKID()
+
+		tcl, w := NewTypedChainLink(link)
+		if w != nil {
+			w.Warn()
+		}
+
+		if tcl.IsDelegation() {
+			_, err = link.VerifySigWithKeyFamily(ckf)
+		}
+
+		if prev_fokid != nil && !prev_fokid.Eq(new_fokid) {
+			_, err = prev.VerifySigWithKeyFamily(ckf)
+		}
+
+		if err != nil {
+			return
+		}
+
+		prev = link
+		prev_fokid = &new_fokid
+	}
+
+	// Always verify the last...
+	_, err = prev.VerifySigWithKeyFamily(ckf)
+
 	return
 }
 
-func (sc *SigChain) VerifySigsAndComputeKeys(kf *KeyFamily) (cki *ComputedKeyInfo, cached bool, err error) {
+func (sc *SigChain) VerifySigsAndComputeKeys(ckf *ComputedKeyFamily) (cached bool, err error) {
 
 	cached = false
 	uid_s := sc.uid.ToString()
@@ -312,18 +354,18 @@ func (sc *SigChain) VerifySigsAndComputeKeys(kf *KeyFamily) (cki *ComputedKeyInf
 		return
 	}
 
-	if kf == nil {
+	if ckf.kf == nil {
 		G.Log.Debug("| VerifyWithKey short-circuit, since no Key available")
 		return
 	}
 
-	links := sc.LimitToKeyFamily(kf)
+	links := sc.LimitToKeyFamily(ckf.kf)
 	if links == nil || len(links) == 0 {
-		G.Log.Debug("| Empty chain after we limited to KeyFamily %v", *kf)
+		G.Log.Debug("| Empty chain after we limited to KeyFamily %v", *ckf.kf)
 		return
 	}
 
-	if cki, cached, err = verifySubchain(kf, links); err == nil {
+	if cached, err = verifySubchain(ckf, links); err == nil {
 		return
 	}
 
@@ -365,8 +407,7 @@ type SigChainLoader struct {
 	chain     *SigChain
 	chainType *ChainType
 	links     []*ChainLink
-	kf        *KeyFamily
-	cki       *ComputedKeyInfos
+	ckf       ComputedKeyFamily
 	dirtyTail *LinkSummary
 
 	// The preloaded sigchain; maybe we're loading a user that already was
@@ -476,7 +517,7 @@ func (l *SigChainLoader) MakeSigChain() error {
 //========================================================================
 
 func (l *SigChainLoader) GetKeyFamily() (err error) {
-	l.kf = l.user.GetKeyFamily()
+	l.ckf.kf = l.user.GetKeyFamily()
 	return
 }
 
@@ -565,8 +606,8 @@ func (l *SigChainLoader) LoadFromServer() (err error) {
 
 func (l *SigChainLoader) VerifySigsAndComputeKeys() (err error) {
 
-	if l.kf != nil {
-		l.cki, _, err = l.chain.VerifySigsAndComputeKeys(l.kf)
+	if l.ckf.kf != nil {
+		_, err = l.chain.VerifySigsAndComputeKeys(&l.ckf)
 	}
 	return
 }

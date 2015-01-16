@@ -14,6 +14,7 @@ type GenericKey interface {
 	GetFingerprintP() *PgpFingerprint
 	GetAlgoType() int
 	SignToString([]byte) (string, *SigId, error)
+	Verify(string, []byte) (*SigId, error)
 	ToP3SKB(ts *triplesec.Cipher) (*P3SKB, error)
 	VerboseDescription() string
 	CheckSecretKey() error
@@ -93,4 +94,14 @@ func (f FOKID) Eq(f2 FOKID) (ret bool) {
 		return false
 	}
 	return ret
+}
+
+func (f FOKID) ToString() string {
+	if f.Kid != nil {
+		return f.Kid.ToString()
+	} else if f.Fp != nil {
+		return f.Fp.ToString()
+	} else {
+		return ""
+	}
 }
