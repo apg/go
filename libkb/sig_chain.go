@@ -298,6 +298,10 @@ func (sc *SigChain) LimitToKeyFamily(kf *KeyFamily) (links []*ChainLink) {
 	return
 }
 
+func verifySubchain(kf *KeyFamily, links []*ChainLink) (cki *ComputedKeyInfo, cached bool, err error) {
+	return
+}
+
 func (sc *SigChain) VerifySigsAndComputeKeys(kf *KeyFamily) (cki *ComputedKeyInfo, cached bool, err error) {
 
 	cached = false
@@ -310,6 +314,16 @@ func (sc *SigChain) VerifySigsAndComputeKeys(kf *KeyFamily) (cki *ComputedKeyInf
 
 	if kf == nil {
 		G.Log.Debug("| VerifyWithKey short-circuit, since no Key available")
+		return
+	}
+
+	links := sc.LimitToKeyFamily(kf)
+	if links == nil || len(links) == 0 {
+		G.Log.Debug("| Empty chain after we limited to KeyFamily %v", *kf)
+		return
+	}
+
+	if cki, cached, err = verifySubchain(kf, links); err == nil {
 		return
 	}
 
