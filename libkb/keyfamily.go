@@ -48,7 +48,7 @@ type ServerKeyRecord struct {
 	key GenericKey `json:-`
 }
 
-type KeyMap map[string]ServerKeyRecord
+type KeyMap map[string]*ServerKeyRecord
 
 // When we play a sigchain forward, it yields ComputeKeyInfo. We're going to
 // store CKIs separately from the keys, since the server can clobber the
@@ -62,8 +62,9 @@ type ComputedKeyInfos struct {
 
 // As returned by user/lookup.json
 type KeyFamily struct {
-	eldest *FOKID
-	pgps   []*PgpKeyBundle
+	eldest  *FOKID
+	pgps    []*PgpKeyBundle
+	pgp2kid map[string]string
 
 	Sibkeys KeyMap `json:"sibkeys"`
 	Subkeys KeyMap `json:"subkeys"`
@@ -74,17 +75,61 @@ type ComputedKeyFamily struct {
 	cki *ComputedKeyInfos
 }
 
-// ProvisionEldest finds the eldest sibling in the family and marks
+func (cki *ComputedKeyInfos) Insert(f *FOKID, i *ComputeKeyInfo) {
+	if f != nil {
+		v := f.ToStrings()
+		for _, s := range v {
+			cki.Infos[s] = i
+		}
+		cki.dirty = true
+	}
+}
+
+// NewComputedKeyInfos creates a new ComputedKeyInfos object
+// from the given key family.  It finds the eldest sibling in the family and marks
 // his status LIVE, so that he can be used to verify signatures. There's
 // obviously no one who can delegate to him, so we take it on faith.
-func (ckf *ComputedKeyFamily) ProvisionEldest() {
-	if ckf.kf.eldest != nil {
-		ckf.cki.Infos[ckf.kf.eldest.ToString()] = ComputedKeyInfo{
-			Eldest: true,
-			Status: KEY_LIVE,
-		}
-		ckf.cki.dirty = true
+func (kf KeyFamily) NewComputedKeyInfos() *ComputedKeyInfos {
+
+	ret := ComputedKeyInfos{
+		Infos: make(map[string]*ComputedKeyInfo),
 	}
+
+	ret.Insert(kf.eldest, &ComputedKeyInfo{
+		Eldest: true,
+		Status: KEY_LIVE,
+	})
+
+	return &ret
+}
+
+// FindSibkey finds a sibkey in our KeyFamily, by either PGP fingerprint or
+// KID.  It returns the GenericKey object that's useful for actually performing
+// PGP ops.
+func (kf KeyFamily) FindActiveSibkey(f FOKID) (key GenericKey, err error) {
+
+	var found bool
+	var i string
+	kid := f.Kid
+	if kid == nil && f.Fp != nil {
+		i = f.Fp.ToString()
+		if kid, found = kf.pgp2kid[i]; !found {
+			err = NoKeyError{fmt.Sprintf("No KID for PGP fingerprint %s found", i)}
+			return
+		}
+	}
+	if kid == nil {
+		err = NoKeyFound{"Can't lookup sibkey without a KID"}
+		return
+	}
+
+	i = f.Kid.ToString()
+	if sk, ok := kf.Sibkeys[i]; !ok {
+		err = NoKeyError{fmt.Sprintf("No sibkey found for %s", i)}
+	} else {
+		key = sk.key
+	}
+	return
 }
 
 func (km KeyMap) Import(pgps_i []*PgpKeyBundle) (pgps_o []*PgpKeyBundle, err error) {
@@ -112,6 +157,9 @@ func (kf *KeyFamily) Import() (err error) {
 	if kf.pgps, err = kf.Subkeys.Import(kf.pgps); err != nil {
 		return
 	}
+	for _, p := range kf.pgps {
+		kf.pgp2kid[p.PgpFingerprint] = p.Kid
+	}
 	err = kf.findEldest()
 	return
 }
@@ -136,7 +184,7 @@ func (kf *KeyFamily) GetEldest() *FOKID {
 
 // findEldest finds the eldest key in the given Key family, and sanity
 // checks that the eldest key is unique.  If tests pass, it sets a "FOKID"
-// object to capture both the KID and the (optional) PgpFingperint
+// object to capture both the KID and the (optional) PgpFingerprint
 // of the eldest key in the family.
 func (kf *KeyFamily) findEldest() (err error) {
 	for _, v := range kf.Sibkeys {
@@ -211,6 +259,18 @@ func (skr *ServerKeyRecord) Import() (pgp *PgpKeyBundle, err error) {
 func (kf KeyFamily) GetSigningKey(kid_s string) (ret GenericKey) {
 	if skr, found := kf.Sibkeys[kid_s]; found {
 		ret = skr.key
+	}
+	return
+}
+
+func (ckf ComputedKeyFamily) FindActiveSibkey(f FOKID) (key GenericKey, err error) {
+	s := f.ToString()
+	if ki := ckf.ki.Infos[s]; ki == nil {
+		err = NoKeyError{fmt.Sprintf("The key '%s' wasn't found", s)}
+	} else if ki.Status != KEY_LIVE {
+		err = BadKeyError{fmt.Sprintf("The key '%s' is no longer active", s)}
+	} else {
+		key, err = ckf.FindSibkey(f)
 	}
 	return
 }

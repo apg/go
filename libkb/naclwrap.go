@@ -262,6 +262,10 @@ func (k NaclSigningKeyPair) Verify(armored string, expected []byte) (sigId *SigI
 		err = WrongKidError{sig.Kid, k.GetKid()}
 		return
 	}
+	if !FastByteArrayEq(sig.Payload, expected) {
+		err = BadSigError{"wrong payload"}
+		return
+	}
 	return
 }
 

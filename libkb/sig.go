@@ -123,7 +123,7 @@ func (k PgpKeyBundle) Verify(armored string, expected []byte) (sigId *SigId,
 		return
 	}
 	if !FastByteArrayEq(res, expected) {
-		err = fmt.Errorf("Verified text failed to match expected text")
+		err = BadSigError{"wrong payload"}
 		return
 	}
 	return sig_id, nil

@@ -92,6 +92,7 @@ type ChainLink struct {
 	payloadJson *jsonw.Wrapper
 	unpacked    *ChainLinkUnpacked
 	lastChecked *CheckResult
+	cachedCki   *ComputedKeyInfos
 
 	typed TypedChainLink
 }
@@ -312,32 +313,30 @@ func (c ChainLink) GetSigId() *SigId {
 	}
 }
 
-func (c *ChainLink) VerifySigWithKeyFamily(ckf *ComputedKeyFamily) (cached bool, err error) {
-
+func (c *ChainLink) VerifySigCheckCache() (cached bool, cki *ComputedKeyInfos) {
 	if c.sigVerified {
 		G.Log.Debug("Skipped verification (cached): %s", c.id.ToString())
 		cached = true
-		return
+		cki = c.cachedCki
 	}
+	return
+}
+
+func (c *ChainLink) VerifySigWithKeyFamily(ckf ComputedKeyFamily) (cached bool, err error) {
 
 	var key GenericKey
+	var sigId *SigId
 
-	if key, err = ckf.FindActiveKey(c.ToFOKID()); err != nil {
+	if key, err = ckf.FindActiveSibkey(c.ToFOKID()); err != nil {
 		return
 	}
 
-	if sig_id, e2 := key.Verify(c.unpacked.sig,
-		[]byte(c.unpacked.payloadJsonStr)); e2 != nil {
-		err = e2
+	if sigId, err = key.Verify(c.unpacked.sig, []byte(c.unpacked.payloadJsonStr)); err != nil {
 		return
-	} else {
-		c.unpacked.sigId = *sig_id
 	}
+	c.unpacked.sigId = *sig_id
 
-	c.sigVerified = true
-	c.dirty = true
 	return
-
 }
 
 func (c *ChainLink) VerifySig(k PgpKeyBundle) (cached bool, err error) {

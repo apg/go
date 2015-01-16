@@ -105,3 +105,13 @@ func (f FOKID) ToString() string {
 		return ""
 	}
 }
+
+func (k FOKID) ToStrings() (ret []string) {
+	if f.Kid != nil {
+		ret = append(ret, f.Kid.ToString())
+	}
+	if f.Fp != nil {
+		ret = append(ret, f.Fp.ToString())
+	}
+	return
+}

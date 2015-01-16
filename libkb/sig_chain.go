@@ -301,13 +301,20 @@ func (sc *SigChain) LimitToKeyFamily(kf *KeyFamily) (links []*ChainLink) {
 // verifySubchain verifies the given subchain and outputs a yes/no answer
 // on whether or not it's well-formed, and also yields ComputedKeyInfos for
 // all keys found in the process, including those that are now retired.
-func verifySubchain(ckf *ComputedKeyFamily, links []*ChainLink) (cached bool, err error) {
+func verifySubchain(kf KeyFamily, links []*ChainLink) (cached bool, cki *ComputedKeyInfos, err error) {
 
 	if links == nil || len(links) == 0 {
 		return
 	}
 
-	ckf.ProvisionEldest()
+	last := links[len(links)-1]
+	if cached, cki = last.VerifySigCheckCache(); cached {
+		return
+	}
+
+	cki = kf.NewComputedKeyInfos()
+
+	ckf = ComputedKeyFamily{&kf, cki}
 
 	var prev *ChainLink
 	var prev_fokid *FOKID
@@ -365,7 +372,7 @@ func (sc *SigChain) VerifySigsAndComputeKeys(ckf *ComputedKeyFamily) (cached boo
 		return
 	}
 
-	if cached, err = verifySubchain(ckf, links); err == nil {
+	if cached, ckf.ki, err = verifySubchain(*ckf.kf, links); err == nil {
 		return
 	}
 
