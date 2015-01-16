@@ -21,7 +21,7 @@ type TypedChainLink interface {
 	IsRevoked() bool
 	GetSeqno() Seqno
 	GetCTime() time.Time
-	GetPgpFingerprint() PgpFingerprint
+	GetPgpFingerprint() *PgpFingerprint
 	GetUsername() string
 	MarkChecked(ProofError)
 	GetProofState() int
@@ -55,7 +55,7 @@ func (b *GenericChainLink) ToDebugString() string {
 func (g *GenericChainLink) IsRevocationIsh() bool { return false }
 func (g *GenericChainLink) IsRevoked() bool       { return g.revoked }
 func (g *GenericChainLink) GetSeqno() Seqno       { return g.unpacked.seqno }
-func (g *GenericChainLink) GetPgpFingerprint() PgpFingerprint {
+func (g *GenericChainLink) GetPgpFingerprint() *PgpFingerprint {
 	return g.unpacked.pgpFingerprint
 }
 

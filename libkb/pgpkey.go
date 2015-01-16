@@ -415,3 +415,12 @@ func ExportAsFOKID(fp *PgpFingerprint, kid KID) (ret keybase_1.FOKID) {
 	}
 	return
 }
+
+func IsPgpAlgo(algo int) bool {
+	switch algo {
+	case KID_PGP_RSA, KID_PGP_RSA, KID_PGP_ELGAMAL,
+		KID_PGP_DSA, KID_PGP_ECDH, KID_PGP_ECDSA:
+		return true
+	}
+	return false
+}

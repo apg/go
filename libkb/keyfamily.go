@@ -24,7 +24,7 @@ type ServerKeyRecord struct {
 	Mtime          int     `json:"mtime"`
 	Ctime          int     `json:"ctime"`
 	Etime          int     `json:"etime"`
-	KeyFingerprint string  `json:"key_fingerprint"`
+	PgpFingerprint string  `json:"key_fingerprint"`
 	SigningKid     *string `json:"signing_kid"`
 	EldestKid      *string `json:"eldest_kid"`
 	KeyLevel       int     `json:"key_level"`
@@ -49,15 +49,22 @@ type ComputedKeyInfos struct {
 
 // As returned by user/lookup.json
 type KeyFamily struct {
-	eldest_kid *KID
-	Sibkeys    KeyMap `json:"sibkeys"`
-	Subkeys    KeyMap `json:"subkeys"`
+	eldest *FOKID
+	pgps   []*PgpKeyBundle
+
+	Sibkeys KeyMap `json:"sibkeys"`
+	Subkeys KeyMap `json:"subkeys"`
 }
 
-func (km KeyMap) Import() (err error) {
+func (km KeyMap) Import(pgps_i []*PgpKeyBundle) (pgps_o []*PgpKeyBundle, err error) {
+	pgps_o = pgps_i
 	for _, v := range km {
-		if err = v.Import(); err != nil {
+		var pgp *PgpKeyBundle
+		if pgp, err = v.Import(); err != nil {
 			return
+		}
+		if pgp != nil {
+			pgps_o = append(pgps_o, pgp)
 		}
 	}
 	return
@@ -68,11 +75,56 @@ func (kf *KeyFamily) Import() (err error) {
 	defer func() {
 		G.Log.Debug("- ImportKeys -> %s", ErrToOk(err))
 	}()
-	if err = kf.Sibkeys.Import(); err != nil {
+	if kf.pgps, err = kf.Sibkeys.Import(kf.pgps); err != nil {
 		return
 	}
-	if err = kf.Subkeys.Import(); err != nil {
+	if kf.pgps, err = kf.Subkeys.Import(kf.pgps); err != nil {
 		return
+	}
+	err = kf.findEldest()
+	return
+}
+
+func (kf *KeyFamily) SetEldest(hx string) (err error) {
+	var kid KID
+	if kid, err = ImportKID(hx); err != nil {
+		return
+	}
+	if kf.eldest == nil {
+		kf.eldest = &FOKID{Kid: kid}
+	} else if !kf.eldest.EqKid(kid) {
+		err = KeyFamilyError{fmt.Sprintf("Kid mismatch: %s != %s",
+			kf.eldest.Kid.ToString(), hx)}
+	}
+	return
+}
+
+func (kf *KeyFamily) GetEldest() *FOKID {
+	return kf.eldest
+}
+
+// findEldest finds the eldest key in the given Key family, and sanity
+// checks that the eldest key is unique.  If tests pass, it sets a "FOKID"
+// object to capture both the KID and the (optional) PgpFingperint
+// of the eldest key in the family.
+func (kf *KeyFamily) findEldest() (err error) {
+	for _, v := range kf.Sibkeys {
+		if v.EldestKid == nil {
+			err = kf.SetEldest(v.Kid)
+		} else {
+			err = kf.SetEldest(*v.EldestKid)
+		}
+		if err != nil {
+			return
+		}
+	}
+	if kf.eldest != nil {
+		x := kf.eldest.Kid.ToString()
+		if key, found := kf.Sibkeys[x]; !found {
+			err = KeyFamilyError{fmt.Sprintf("Eldest KID %s disappeared", x)}
+		} else {
+			kf.eldest.Fp, err = PgpFingerprintFromHex(key.PgpFingerprint)
+		}
 	}
 	return
 }
@@ -102,13 +154,19 @@ func ParseKeyFamily(jw *jsonw.Wrapper) (ret *KeyFamily, err error) {
 	return
 }
 
-func (skr *ServerKeyRecord) Import() (err error) {
-	switch skr.KeyAlgo {
-	case KID_PGP_RSA, KID_PGP_RSA, KID_PGP_ELGAMAL, KID_PGP_DSA, KID_PGP_ECDH, KID_PGP_ECDSA:
-		skr.key, err = ReadOneKeyFromString(skr.Bundle)
-	case KID_NACL_EDDSA:
+func (skr ServerKeyRecord) IsPgp() bool {
+	return skr.key != nil && IsPgpAlgo(skr.KeyAlgo)
+}
+
+func (skr *ServerKeyRecord) Import() (pgp *PgpKeyBundle, err error) {
+	switch {
+	case IsPgpAlgo(skr.KeyAlgo):
+		if pgp, err = ReadOneKeyFromString(skr.Bundle); err == nil {
+			skr.key = pgp
+		}
+	case skr.KeyAlgo == KID_NACL_EDDSA:
 		skr.key, err = ImportNaclSigningKeyPair(skr.Bundle)
-	case KID_NACL_DH:
+	case skr.KeyAlgo == KID_NACL_DH:
 		skr.key, err = ImportNaclDHKeyPair(skr.Bundle)
 	default:
 		err = BadKeyError{fmt.Sprintf("algo=%d is unknown", skr.KeyAlgo)}

@@ -67,7 +67,8 @@ type ChainLinkUnpacked struct {
 	seqno          Seqno
 	payloadJsonStr string
 	ctime, etime   int64
-	pgpFingerprint PgpFingerprint
+	pgpFingerprint *PgpFingerprint
+	kid            KID
 	sig            string
 	sigId          SigId
 	uid            UID
@@ -151,12 +152,6 @@ func (c ChainLink) GetRevocations() []*SigId {
 	return ret
 }
 
-func (c ChainLink) PackVerification(jw *jsonw.Wrapper) {
-	jw.SetKey("publicKey", jsonw.NewString(c.unpacked.pgpFingerprint.ToString()))
-	jw.SetKey("seqno", jsonw.NewInt64(int64(c.unpacked.seqno)))
-	jw.SetKey("last_link", jsonw.NewString(c.id.ToString()))
-}
-
 func (c ChainLink) checkAgainstMerkleTree(t *MerkleTriple) (found bool, err error) {
 	found = false
 	if t != nil && c.GetSeqno() == t.seqno {
@@ -171,9 +166,18 @@ func (c ChainLink) checkAgainstMerkleTree(t *MerkleTriple) (found bool, err erro
 
 func (c *ChainLink) UnpackPayloadJson(tmp *ChainLinkUnpacked) (err error) {
 	var sq int64
+	var e2 error
 
-	GetPgpFingerprintVoid(c.payloadJson.AtPath("body.key.fingerprint"),
-		&tmp.pgpFingerprint, &err)
+	if jw := c.payloadJson.AtPath("body.key.fingerprint"); !jw.IsNil() {
+		if tmp.pgpFingerprint, e2 = GetPgpFingerprint(jw); e2 != nil {
+			err = e2
+		}
+	}
+	if jw := c.payloadJson.AtPath("body.key.kid"); !jw.IsNil() {
+		if tmp.kid, e2 = GetKID(jw); e2 != nil {
+			err = e2
+		}
+	}
 	c.payloadJson.AtPath("body.key.username").GetStringVoid(&tmp.username, &err)
 	GetUidVoid(c.payloadJson.AtPath("body.key.uid"), &tmp.uid, &err)
 	GetLinkIdVoid(c.payloadJson.AtKey("prev"), &tmp.prev, &err)
@@ -313,7 +317,12 @@ func (c *ChainLink) VerifySig(k PgpKeyBundle) (cached bool, err error) {
 		return
 	}
 
-	if !k.GetFingerprint().Eq(c.unpacked.pgpFingerprint) {
+	if c.unpacked.pgpFingerprint == nil {
+		err = NoKeyError{}
+		return
+	}
+
+	if !k.GetFingerprint().Eq(*c.unpacked.pgpFingerprint) {
 		err = fmt.Errorf("Key fingerprint mismatch")
 		return
 	}
@@ -408,12 +417,25 @@ func (l *ChainLink) Store() (didStore bool, err error) {
 	return
 }
 
-func (c *ChainLink) GetPgpFingerprint() PgpFingerprint {
+func (c *ChainLink) ToFOKID() FOKID {
+	return FOKID{
+		Kid: c.unpacked.kid,
+		Fp:  c.unpacked.pgpFingerprint,
+	}
+}
+
+// MatchFOKID checks if the given ChainLink matches the given
+// FOKID using standard FOKID equality.
+func (c *ChainLink) MatchFOKID(fokid *FOKID) bool {
+	return c.ToFOKID().Eq(*fokid)
+}
+
+func (c *ChainLink) GetPgpFingerprint() *PgpFingerprint {
 	return c.unpacked.pgpFingerprint
 }
 
 func (c ChainLink) MatchFingerprint(fp PgpFingerprint) bool {
-	return fp.Eq(c.unpacked.pgpFingerprint)
+	return c.unpacked.pgpFingerprint != nil && fp.Eq(*c.unpacked.pgpFingerprint)
 }
 
 func (c ChainLink) MatchUidAndUsername(uid UID, username string) bool {

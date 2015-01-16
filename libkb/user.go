@@ -80,12 +80,17 @@ type User struct {
 	privateKeys *jsonw.Wrapper
 
 	// Processed fields
-	id        UID
-	name      string
-	sigChain  *SigChain
-	IdTable   *IdentityTable
-	sigHints  *SigHints
+	id       UID
+	name     string
+	sigChain *SigChain
+	IdTable  *IdentityTable
+	sigHints *SigHints
+
+	// Loaded from publicKeys
 	keyFamily *KeyFamily
+
+	// Computed as a result of sigchain traversal
+	cki *ComputedKeyInfos
 
 	loggedIn bool // if we were logged in when we loaded it
 	secret   bool // if we asked for secret keys when we loaded
@@ -279,6 +284,10 @@ func LoadUserFromLocalStorage(uid UID, allKeys bool, loadSecrets bool) (u *User,
 	G.Log.Debug("- LoadUserFromLocalStorage(%s,%s)", u.name, uid_s)
 
 	return
+}
+
+func (u *User) GetKeyFamily() *KeyFamily {
+	return u.keyFamily
 }
 
 func (u *User) GetActivePgpFingerprint() (f *PgpFingerprint, err error) {

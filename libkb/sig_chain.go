@@ -270,7 +270,35 @@ func (sc *SigChain) VerifyId(key *PgpKeyBundle) error {
 		sc.uid.ToString(), sc.username, fp.ToString())
 }
 
-func (sc *SigChain) VerifyWithKey(key *PgpKeyBundle) (cached bool, err error) {
+// LimitToKeyFamily takes the given sigchain and walks backwards,
+// stopping at either the chain beginning or the first link that's
+// not a member of the current KeyFamily
+func (sc *SigChain) LimitToKeyFamily(kf *KeyFamily) (links []*ChainLink) {
+	var fokid *FOKID
+	if fokid = kf.GetEldest(); fokid == nil {
+		return
+	}
+	if sc.chainLinks == nil {
+		return
+	}
+	l := len(sc.chainLinks)
+	lastGood := l
+	for i := l - 1; i >= 0; i-- {
+		if sc.chainLinks[i].MatchFOKID(fokid) {
+			lastGood = i
+		} else {
+			break
+		}
+	}
+	if lastGood == 0 {
+		links = sc.chainLinks
+	} else {
+		links = sc.chainLinks[lastGood:]
+	}
+	return
+}
+
+func (sc *SigChain) VerifySigsAndComputeKeys(kf *KeyFamily) (cki *ComputedKeyInfo, cached bool, err error) {
 
 	cached = false
 	uid_s := sc.uid.ToString()
@@ -280,7 +308,7 @@ func (sc *SigChain) VerifyWithKey(key *PgpKeyBundle) (cached bool, err error) {
 		return
 	}
 
-	if key == nil {
+	if kf == nil {
 		G.Log.Debug("| VerifyWithKey short-circuit, since no Key available")
 		return
 	}
@@ -323,7 +351,8 @@ type SigChainLoader struct {
 	chain     *SigChain
 	chainType *ChainType
 	links     []*ChainLink
-	fp        *PgpFingerprint
+	kf        *KeyFamily
+	cki       *ComputedKeyInfos
 	dirtyTail *LinkSummary
 
 	// The preloaded sigchain; maybe we're loading a user that already was
@@ -432,8 +461,8 @@ func (l *SigChainLoader) MakeSigChain() error {
 
 //========================================================================
 
-func (l *SigChainLoader) GetFingerprint() (err error) {
-	l.fp, err = l.user.GetActivePgpFingerprint()
+func (l *SigChainLoader) GetKeyFamily() (err error) {
+	l.kf = l.user.GetKeyFamily()
 	return
 }
 
@@ -520,21 +549,11 @@ func (l *SigChainLoader) LoadFromServer() (err error) {
 
 //========================================================================
 
-func (l *SigChainLoader) VerifySig() (err error) {
-	var key *PgpKeyBundle
+func (l *SigChainLoader) VerifySigsAndComputeKeys() (err error) {
 
-	if l.fp == nil {
-		return
+	if l.kf != nil {
+		l.cki, _, err = l.chain.VerifySigsAndComputeKeys(l.kf)
 	}
-	if key, err = l.user.GetActiveKey(); err != nil {
-		return
-	}
-	if err = key.CheckFingerprint(l.fp); err != nil {
-		return
-	}
-
-	_, err = l.chain.VerifyWithKey(key)
-
 	return
 }
 
@@ -626,7 +645,7 @@ func (l *SigChainLoader) Load() (ret *SigChain, err error) {
 		return
 	}
 	stage("VerifySig")
-	if err = l.VerifySig(); err != nil {
+	if err = l.VerifySigsAndComputeKeys(); err != nil {
 		return
 	}
 	stage("Store")
