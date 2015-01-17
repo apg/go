@@ -290,6 +290,13 @@ func (u *User) GetKeyFamily() *KeyFamily {
 	return u.keyFamily
 }
 
+func (u *User) GetComputedKeyFamily() (ret *ComputedKeyFamily) {
+	if u.sigChain != nil {
+		ret = &u.sigChain.ckf
+	}
+	return
+}
+
 func (u *User) GetActivePgpFingerprint() (f *PgpFingerprint, err error) {
 
 	if u.activePgpFingerprint != nil {
@@ -605,21 +612,12 @@ func (u *User) VerifySelfSig() error {
 	return fmt.Errorf("Failed to find a self-signature for %s", u.name)
 }
 
-func (u *User) VerifySelfSigByKey() bool {
-
+func (u *User) VerifySelfSigByKey() (ret bool) {
 	name := u.GetName()
-	if key, err := u.GetActiveKey(); err == nil && key != nil {
-		for _, ident := range key.Identities {
-			if i, e2 := ParseIdentity(ident.Name); e2 == nil {
-				if i.Email == KeybaseEmailAddress(name) {
-					G.Log.Debug("| Found self-sig for %s in key ID: %s",
-						name, ident.Name)
-					return true
-				}
-			}
-		}
+	if ckf := u.GetComputedKeyFamily(); ckf != nil {
+		ret = ckf.FindKeybaseName(name)
 	}
-	return false
+	return
 }
 
 func LoadUser(arg LoadUserArg) (ret *User, err error) {

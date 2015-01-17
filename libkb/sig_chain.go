@@ -12,6 +12,7 @@ type SigChain struct {
 	chainLinks []*ChainLink
 	idVerified bool
 	allKeys    bool
+	ckf        ComputedKeyFamily
 
 	// If we've made local modifications to our chain, mark it here;
 	// there's a slight lag on the server and we might not get the
@@ -679,6 +680,9 @@ func (l *SigChainLoader) Load() (ret *SigChain, err error) {
 	if err = l.Store(); err != nil {
 		return
 	}
+
+	// Store the computed key family into the returned SigChain
+	ret.ckf = l.ckf
 
 	return
 }

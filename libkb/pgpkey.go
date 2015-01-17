@@ -424,3 +424,12 @@ func IsPgpAlgo(algo int) bool {
 	}
 	return false
 }
+
+func (pgp *PgpKeyBundle) FindEmail(em string) bool {
+	for _, ident := range pgp.Identities {
+		if i, e := ParseIdentity(ident.Name); e == nil && i.Email == em {
+			return true
+		}
+	}
+	return false
+}

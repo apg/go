@@ -366,3 +366,23 @@ func (ckf *ComputedKeyFamily) RevokeKid(kid KID, tcl TypedChainLink) (err error)
 	}
 	return
 }
+
+// FindKeybaseName looks at all PGP keys in this key family that are active
+// sibkeys to find a key with a signed identity of <name@keybase.io>. IF
+// found return true, and otherwise false.
+func (ckf ComputedKeyFamily) FindKeybaseName(s string) bool {
+	kem := KeybaseEmailAddress(s)
+	for _, pgp := range ckf.kf.pgps {
+		kid := pgp.GetKid()
+		if info, found := ckf.cki.Infos[kid.ToString()]; !found {
+			continue
+		} else if info.Status != KEY_LIVE || !info.Sibkey {
+			continue
+		}
+		if pgp.FindEmail(kem) {
+			G.Log.Debug("| Found self-sig for %s in key ID: %s", s, kid.ToString())
+			return true
+		}
+	}
+	return false
+}
