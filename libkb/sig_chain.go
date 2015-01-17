@@ -227,49 +227,6 @@ func (sc *SigChain) Store() (err error) {
 	return nil
 }
 
-func (sc *SigChain) verifyId(fp PgpFingerprint) (good bool, searched bool) {
-
-	var search, ok bool
-
-	if sc.chainLinks != nil {
-		for i := len(sc.chainLinks) - 1; i >= 0; i-- {
-			cl := sc.chainLinks[i]
-			if !cl.MatchFingerprint(fp) {
-				break
-			}
-			search = true
-			if ok = cl.MatchUidAndUsername(sc.uid, sc.username); ok {
-				return true, true
-			}
-		}
-	}
-
-	return false, search
-}
-
-func (sc *SigChain) VerifyId(key *PgpKeyBundle) error {
-
-	if sc.idVerified {
-		return nil
-	}
-
-	fp := key.GetFingerprint()
-
-	good, searched := sc.verifyId(fp)
-	if good {
-		sc.idVerified = true
-		return nil
-	}
-
-	if !searched && key.FindKeybaseUsername(sc.username) {
-		sc.idVerified = true
-		return nil
-	}
-
-	return fmt.Errorf("No proof of UID %s for user %s w/ key %s",
-		sc.uid.ToString(), sc.username, fp.ToString())
-}
-
 // LimitToKeyFamily takes the given sigchain and walks backwards,
 // stopping at either the chain beginning or the first link that's
 // not a member of the current KeyFamily
