@@ -78,6 +78,8 @@ type ComputedKeyFamily struct {
 	cki *ComputedKeyInfos
 }
 
+// Insert inserts the given ComputedKeyInfo object 1 or 2 times,
+// depending on if a KID or PgpFingerprint or both are available.
 func (cki *ComputedKeyInfos) Insert(f *FOKID, i *ComputedKeyInfo) {
 	if f != nil {
 		v := f.ToStrings()
@@ -135,6 +137,9 @@ func (kf KeyFamily) FindActiveSibkey(f FOKID) (key GenericKey, err error) {
 	return
 }
 
+// Import takes all ServerKeyRecords in this KeyMap and imports the
+// key bundle into a GenericKey object that can perform crypto ops. It
+// also collects all PgpKeyBundles along the way.
 func (km KeyMap) Import(pgps_i []*PgpKeyBundle) (pgps_o []*PgpKeyBundle, err error) {
 	pgps_o = pgps_i
 	for _, v := range km {
@@ -149,6 +154,8 @@ func (km KeyMap) Import(pgps_i []*PgpKeyBundle) (pgps_o []*PgpKeyBundle, err err
 	return
 }
 
+// Import takes all Subkeys and Subkeys and imports them and indexes them.
+// It indexes them both by KID and by PgpFingerprint, if available.
 func (kf *KeyFamily) Import() (err error) {
 	G.Log.Debug("+ ImportKeys")
 	defer func() {
@@ -167,7 +174,9 @@ func (kf *KeyFamily) Import() (err error) {
 	return
 }
 
-func (kf *KeyFamily) SetEldest(hx string) (err error) {
+// setEldest sets this keyFamily's eldest KID to the given KID (specified in hex).
+// It is strict that there can only be one eldest KID in the family.
+func (kf *KeyFamily) setEldest(hx string) (err error) {
 	var kid KID
 	if kid, err = ImportKID(hx); err != nil {
 		return
@@ -181,6 +190,7 @@ func (kf *KeyFamily) SetEldest(hx string) (err error) {
 	return
 }
 
+// GetEldest gets the KID of the eldest key in the family.
 func (kf *KeyFamily) GetEldest() *FOKID {
 	return kf.eldest
 }
@@ -192,9 +202,9 @@ func (kf *KeyFamily) GetEldest() *FOKID {
 func (kf *KeyFamily) findEldest() (err error) {
 	for _, v := range kf.Sibkeys {
 		if v.EldestKid == nil {
-			err = kf.SetEldest(v.Kid)
+			err = kf.setEldest(v.Kid)
 		} else {
-			err = kf.SetEldest(*v.EldestKid)
+			err = kf.setEldest(*v.EldestKid)
 		}
 		if err != nil {
 			return
@@ -211,6 +221,8 @@ func (kf *KeyFamily) findEldest() (err error) {
 	return
 }
 
+// ParseKeyFamily takes as input a dictionary from a JSON file and returns
+// a parsed version for manipulation in the program.
 func ParseKeyFamily(jw *jsonw.Wrapper) (ret *KeyFamily, err error) {
 	var tmp []byte
 	if jw == nil && jw.IsNil() {

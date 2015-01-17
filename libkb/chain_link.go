@@ -132,6 +132,10 @@ func (c *ChainLink) Pack() error {
 	p.SetKey("fingerprint", jsonw.NewString(c.unpacked.pgpFingerprint.ToString()))
 	p.SetKey("sig_verified", jsonw.NewBool(c.sigVerified))
 
+	if c.cachedCki != nil {
+		p.SetKey("cached_cki", jsonw.NewWrapper(*c.cachedCki))
+	}
+
 	c.packed = p
 
 	return nil
@@ -244,6 +248,17 @@ func (c *ChainLink) UnpackLocal() (err error) {
 	return
 }
 
+func (c *ChainLink) UnpackComputedKeyInfos(jw *jsonw.Wrapper) (err error) {
+	var tmp ComputedKeyInfos
+	if jw == nil || jw.IsNil() {
+		return
+	}
+	if err = jw.UnmarshalAgain(&tmp); err != nil {
+		c.cachedCki = &tmp
+	}
+	return
+}
+
 func (c *ChainLink) Unpack(trusted bool) (err error) {
 	tmp := ChainLinkUnpacked{}
 
@@ -274,6 +289,7 @@ func (c *ChainLink) Unpack(trusted bool) (err error) {
 		if e2 == nil && b {
 			c.sigVerified = true
 			G.Log.Debug("| Link is marked as 'sig_verified'")
+			c.UnpackComputedKeyInfos(c.packed.AtKey("cached_cki"))
 		}
 	}
 
@@ -345,12 +361,18 @@ func (c ChainLink) GetSigId() *SigId {
 	}
 }
 
-func (c *ChainLink) VerifySigCheckCache() (cached bool, cki *ComputedKeyInfos) {
-	if c.sigVerified {
-		G.Log.Debug("Skipped verification (cached): %s", c.id.ToString())
-		cached = true
+func (c *ChainLink) GetSigCheckCache() (cki *ComputedKeyInfos) {
+	if c.sigVerified && c.cachedCki != nil {
 		cki = c.cachedCki
 	}
+	return
+}
+
+func (c *ChainLink) PutSigCheckCache(cki *ComputedKeyInfos) {
+	G.Log.Debug("Caching SigCheck for link %s:", c.id.ToString())
+	c.sigVerified = true
+	c.dirty = true
+	c.cachedCki = cki
 	return
 }
 

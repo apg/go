@@ -308,7 +308,9 @@ func verifySubchain(kf KeyFamily, links []*ChainLink) (cached bool, cki *Compute
 	}
 
 	last := links[len(links)-1]
-	if cached, cki = last.VerifySigCheckCache(); cached {
+	if cki = last.GetSigCheckCache(); cki != nil {
+		cached = true
+		G.Log.Debug("Skipped verification (cached): %s", last.id.ToString())
 		return
 	}
 
@@ -352,11 +354,9 @@ func verifySubchain(kf KeyFamily, links []*ChainLink) (cached bool, cki *Compute
 	}
 
 	// Always verify the last...
-	_, err = last.VerifySigWithKeyFamily(ckf)
-
-	// XXX TODO XXX
-	//
-	// Now add the result back into the cache for the last link
+	if _, err = last.VerifySigWithKeyFamily(ckf); err == nil {
+		last.PutSigCheckCache(cki)
+	}
 
 	return
 }
