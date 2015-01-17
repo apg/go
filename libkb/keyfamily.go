@@ -4,7 +4,6 @@
 package libkb
 
 import (
-	"encoding/json"
 	"fmt"
 	"github.com/keybase/go-jsonw"
 )
@@ -224,32 +223,21 @@ func (kf *KeyFamily) findEldest() (err error) {
 // ParseKeyFamily takes as input a dictionary from a JSON file and returns
 // a parsed version for manipulation in the program.
 func ParseKeyFamily(jw *jsonw.Wrapper) (ret *KeyFamily, err error) {
-	var tmp []byte
 	if jw == nil && jw.IsNil() {
 		err = KeyFamilyError{"nil record from server"}
 	}
 
 	// Somewhat wasteful but probably faster than using Jsonw wrappers,
 	// and less error-prone
-	if tmp, err = jw.Marshal(); err != nil {
-		return
-	}
-
 	var obj KeyFamily
-
-	if err = json.Unmarshal(tmp, &obj); err != nil {
+	if err = jw.UnmarshalAgain(&obj); err != nil {
 		return
 	}
-
 	if err = obj.Import(); err != nil {
 		return
 	}
 	ret = &obj
 	return
-}
-
-func (skr ServerKeyRecord) IsPgp() bool {
-	return skr.key != nil && IsPgpAlgo(skr.KeyAlgo)
 }
 
 func (skr *ServerKeyRecord) Import() (pgp *PgpKeyBundle, err error) {
