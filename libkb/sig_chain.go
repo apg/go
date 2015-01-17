@@ -328,17 +328,16 @@ func verifySubchain(kf KeyFamily, links []*ChainLink) (cached bool, cki *Compute
 			w.Warn()
 		}
 
-		if tcl.IsDelegation() {
-			_, err = link.VerifySigWithKeyFamily(ckf)
-
-			// XXX TODO XXX
-			//
-			// If it worked, then add the new sig into the key family.
+		if dlg := tcl.IsDelegation(); dlg == DLG_NONE {
+		} else if _, err = link.VerifySigWithKeyFamily(ckf); err != nil {
+			return
+		} else if err = ckf.Delegate(tcl); err != nil {
+			return
 		}
 
-		// XXX TODO XXX
-		//
-		// Check revocations and alter the key family accordingly
+		if err = ckf.Revoke(tcl); err != nil {
+			return
+		}
 
 		if prev_fokid != nil && !prev_fokid.Eq(new_fokid) {
 			_, err = prev.VerifySigWithKeyFamily(ckf)

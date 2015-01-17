@@ -10,6 +10,7 @@ import (
 
 type TypedChainLink interface {
 	GetRevocations() []*SigId
+	GetRevokeKids() []KID
 	insertIntoTable(tab *IdentityTable)
 	GetSigId() SigId
 	GetArmoredSig() string
@@ -19,14 +20,17 @@ type TypedChainLink interface {
 	ToDisplayString() string
 	IsRevocationIsh() bool
 	IsRevoked() bool
-	IsDelegation() bool
+	IsDelegation() int
 	GetSeqno() Seqno
 	GetCTime() time.Time
 	GetPgpFingerprint() *PgpFingerprint
+	GetKid() KID
 	GetUsername() string
 	MarkChecked(ProofError)
 	GetProofState() int
 	GetUID() UID
+	GetDelegatedKid() KID
+	GetMerkleSeqno() int
 }
 
 //=========================================================================
@@ -53,8 +57,10 @@ func (b *GenericChainLink) ToDebugString() string {
 		string(b.parent.uid.ToString()), b.unpacked.seqno, b.id.ToString())
 }
 
+func (g *GenericChainLink) GetDelegatedKid() KID  { return nil }
 func (g *GenericChainLink) IsRevocationIsh() bool { return false }
-func (g *GenericChainLink) IsDelegation() bool    { return false }
+func (g *GenericChainLink) IsDelegation() int     { return DLG_NONE }
+func (g *GenericChainLink) IsSibkey() bool        { return false }
 func (g *GenericChainLink) IsRevoked() bool       { return g.revoked }
 func (g *GenericChainLink) GetSeqno() Seqno       { return g.unpacked.seqno }
 func (g *GenericChainLink) GetPgpFingerprint() *PgpFingerprint {
@@ -450,13 +456,10 @@ func ParseSibkeyChainLink(b GenericChainLink) (ret *SibkeyChainLink, err error) 
 
 }
 
-func (s *SibkeyChainLink) Type() string { return "sibkey" }
-
-func (r *SibkeyChainLink) ToDisplayString() string {
-	return r.kid.ToString()
-}
-
-func (s *SibkeyChainLink) IsDelegation() bool { return true }
+func (s *SibkeyChainLink) GetDelegatedKid() KID    { return s.kid }
+func (s *SibkeyChainLink) IsDelegation() int       { return DLG_SIBKEY }
+func (s *SibkeyChainLink) Type() string            { return "sibkey" }
+func (r *SibkeyChainLink) ToDisplayString() string { return r.kid.ToString() }
 
 //
 //=========================================================================
@@ -477,13 +480,10 @@ func ParseSubkeyChainLink(b GenericChainLink) (ret *SubkeyChainLink, err error) 
 	return
 }
 
-func (s *SubkeyChainLink) Type() string { return "subkey" }
-
-func (r *SubkeyChainLink) ToDisplayString() string {
-	return r.kid.ToString()
-}
-
-func (s *SubkeyChainLink) IsDelegation() bool { return true }
+func (s *SubkeyChainLink) Type() string            { return "subkey" }
+func (r *SubkeyChainLink) ToDisplayString() string { return r.kid.ToString() }
+func (s *SubkeyChainLink) IsDelegation() int       { return DLG_SUBKEY }
+func (s *SubkeyChainLink) GetDelegatedKid() KID    { return s.kid }
 
 //
 //=========================================================================

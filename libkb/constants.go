@@ -176,3 +176,9 @@ var (
 	KEY_DELETED    = 2
 	KEY_SUPERSEDED = 3
 )
+
+const (
+	DLG_NONE   = iota
+	DLG_SIBKEY = iota
+	DLG_SUBKEY = iota
+)

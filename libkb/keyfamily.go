@@ -7,7 +7,6 @@ import (
 	"encoding/json"
 	"fmt"
 	"github.com/keybase/go-jsonw"
-	"time"
 )
 
 // We have two notions of time we can use -- standard UTC which might
@@ -16,17 +15,17 @@ import (
 // The issue is that we're not uniformly signing Merkle roots into signatures,
 // especially those generated on the Web site.
 type KeybaseTime struct {
-	Utc   time.Time // UTC wallclock time
-	Chain int       // Merkle root chain time
+	Unix  int64 // UTC wallclock time
+	Chain int   // Merkle root chain time
 }
 
 type ComputedKeyInfo struct {
 	Status      int
 	Eldest      bool
+	Sibkey      bool
 	Delegations map[SigId]KID
-	Revocations map[SigId]KID
-	Delegated   *KeybaseTime
-	Revoked     *KeybaseTime
+	DelegatedAt *KeybaseTime
+	RevokedAt   *KeybaseTime
 }
 
 // As returned by user/lookup.json
@@ -50,7 +49,7 @@ type ServerKeyRecord struct {
 
 type KeyMap map[string]ServerKeyRecord
 
-// When we play a sigchain forward, it yields ComputeKeyInfo. We're going to
+// When we play a sigchain forward, it yields ComputedKeyInfos (CKIs). We're going to
 // store CKIs separately from the keys, since the server can clobber the
 // former.  We should rewrite CKIs every time we (re)check a user's SigChain
 type ComputedKeyInfos struct {
@@ -58,6 +57,10 @@ type ComputedKeyInfos struct {
 
 	// Map of KID (in HEX) to a computed info
 	Infos map[string]*ComputedKeyInfo
+
+	// Map of a SigId (in Binary) to the ComputedKeyInfo describing when the key was
+	// delegated.
+	Sigs map[SigId]*ComputedKeyInfo
 }
 
 // As returned by user/lookup.json
@@ -269,8 +272,97 @@ func (ckf ComputedKeyFamily) FindActiveSibkey(f FOKID) (key GenericKey, err erro
 		err = NoKeyError{fmt.Sprintf("The key '%s' wasn't found", s)}
 	} else if ki.Status != KEY_LIVE {
 		err = BadKeyError{fmt.Sprintf("The key '%s' is no longer active", s)}
+	} else if !ki.Sibkey {
+		err = BadKeyError{fmt.Sprintf("The key '%s' wasn't delegated as a sibkey", s)}
 	} else {
 		key, err = ckf.FindActiveSibkey(f)
+	}
+	return
+}
+
+// TclToKeybaseTime turns a TypedChainLink into a KeybaseTime tuple, looking
+// inside the chainlink for the Unix wallclock and the global MerkleChain seqno.
+func TclToKeybaseTime(tcl TypedChainLink) *KeybaseTime {
+	return &KeybaseTime{
+		Unix:  tcl.GetCTime().Unix(),
+		Chain: tcl.GetMerkleSeqno(),
+	}
+}
+
+// Delegate performs a delegation to the key described in the given TypedChainLink.
+// This maybe be a sub- or sibkey delegation.
+func (ckf *ComputedKeyFamily) Delegate(tcl TypedChainLink) (err error) {
+	kid := tcl.GetDelegatedKid()
+	kid_s := kid.ToString()
+	sigid := tcl.GetSigId()
+	tm := TclToKeybaseTime(tcl)
+
+	info, found := ckf.cki.Infos[kid_s]
+	if !found {
+		info = &ComputedKeyInfo{
+			Eldest:      false,
+			Status:      KEY_LIVE,
+			Delegations: make(map[SigId]KID),
+			DelegatedAt: tm,
+		}
+		ckf.cki.Infos[kid_s] = info
+	} else {
+		info.Status = KEY_LIVE
+	}
+	info.Delegations[sigid] = tcl.GetKid()
+	if tcl.IsDelegation() == DLG_SIBKEY {
+		info.Sibkey = true
+	}
+	ckf.cki.Sigs[sigid] = info
+	return
+}
+
+func (ckf *ComputedKeyFamily) Revoke(tcl TypedChainLink) (err error) {
+	err = ckf.RevokeSigs(tcl.GetRevocations(), tcl)
+	if err == nil {
+		err = ckf.RevokeKids(tcl.GetRevokeKids(), tcl)
+	}
+	return err
+}
+
+func (ckf *ComputedKeyFamily) RevokeSigs(sigs []*SigId, tcl TypedChainLink) (err error) {
+	for _, s := range sigs {
+		if s != nil {
+			if err = ckf.RevokeSig(*s, tcl); err != nil {
+				return
+			}
+		}
+	}
+	return
+}
+
+func (ckf *ComputedKeyFamily) RevokeKids(kids []KID, tcl TypedChainLink) (err error) {
+	for _, k := range kids {
+		if k != nil {
+			if err = ckf.RevokeKid(k, tcl); err != nil {
+				return
+			}
+		}
+	}
+	return
+}
+
+func (ckf *ComputedKeyFamily) RevokeSig(sig SigId, tcl TypedChainLink) (err error) {
+	if info, found := ckf.cki.Sigs[sig]; !found {
+	} else if _, found = info.Delegations[sig]; !found {
+		err = BadRevocationError{fmt.Sprintf("Can't find sigId %s in delegation list",
+			sig.ToString(true))}
+	} else {
+		info.Status = KEY_REVOKED
+		info.RevokedAt = TclToKeybaseTime(tcl)
+	}
+	return
+}
+
+func (ckf *ComputedKeyFamily) RevokeKid(kid KID, tcl TypedChainLink) (err error) {
+	if info, found := ckf.cki.Infos[kid.ToString()]; found {
+		info.Status = KEY_REVOKED
+		info.RevokedAt = TclToKeybaseTime(tcl)
 	}
 	return
 }

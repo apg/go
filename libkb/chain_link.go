@@ -137,6 +137,14 @@ func (c *ChainLink) Pack() error {
 	return nil
 }
 
+func (c ChainLink) GetMerkleSeqno() int {
+	i, err := c.payloadJson.AtPath("body.merkle_root.seqno").GetInt()
+	if err != nil {
+		i = 0
+	}
+	return i
+}
+
 func (c ChainLink) GetRevocations() []*SigId {
 	ret := make([]*SigId, 0, 0)
 	jw := c.payloadJson.AtKey("body").AtKey("revoke")
@@ -149,8 +157,32 @@ func (c ChainLink) GetRevocations() []*SigId {
 	l, err = v.Len()
 	if err == nil && l > 0 {
 		for i := 0; i < l; i++ {
-			s, err = GetSigId(v.AtIndex(i), true)
-			ret = append(ret, s)
+			if s, err = GetSigId(v.AtIndex(i), true); err == nil {
+				ret = append(ret, s)
+			}
+		}
+	}
+	return ret
+}
+
+func (c ChainLink) GetRevokeKids() []KID {
+	ret := make([]KID, 0, 0)
+	jw := c.payloadJson.AtKey("body").AtKey("revoke")
+	if jw.IsNil() {
+		return nil
+	}
+	s, err := GetKID(jw.AtKey("kid"))
+	if err == nil {
+		ret = append(ret, s)
+	}
+	v := jw.AtKey("kids")
+	var l int
+	l, err = v.Len()
+	if err == nil && l > 0 {
+		for i := 0; i < l; i++ {
+			if s, err = GetKID(v.AtIndex(i)); err == nil {
+				ret = append(ret, s)
+			}
 		}
 	}
 	return ret
@@ -461,9 +493,8 @@ func (c *ChainLink) MatchFOKID(fokid *FOKID) bool {
 	return c.ToFOKID().Eq(*fokid)
 }
 
-func (c *ChainLink) GetPgpFingerprint() *PgpFingerprint {
-	return c.unpacked.pgpFingerprint
-}
+func (c *ChainLink) GetPgpFingerprint() *PgpFingerprint { return c.unpacked.pgpFingerprint }
+func (c *ChainLink) GetKid() KID                        { return c.unpacked.kid }
 
 func (c ChainLink) MatchFingerprint(fp PgpFingerprint) bool {
 	return c.unpacked.pgpFingerprint != nil && fp.Eq(*c.unpacked.pgpFingerprint)

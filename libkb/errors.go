@@ -602,3 +602,13 @@ func (e KeyFamilyError) Error() string {
 }
 
 //=============================================================================
+
+type BadRevocationError struct {
+	msg string
+}
+
+func (e BadRevocationError) Error() string {
+	return fmt.Sprintf("Bad revocation: %s", e.msg)
+}
+
+//=============================================================================
