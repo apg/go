@@ -292,7 +292,7 @@ func (u *User) GetKeyFamily() *KeyFamily {
 
 func (u *User) GetComputedKeyFamily() (ret *ComputedKeyFamily) {
 	if u.sigChain != nil {
-		ret = &u.sigChain.ckf
+		ret = u.sigChain.GetComputedKeyFamily()
 	}
 	return
 }
@@ -844,6 +844,24 @@ func (u *User) checkKeyFingerprint(arg LoadUserArg) error {
 	}
 
 	return nil
+}
+
+// localProvisionKey takes the given GenericKey and provisions it locally so that
+// we can use the key without needing a refresh from the server.  The eventual
+// refresh we do get from the server will clobber our work here.
+func (u *User) localDelegateKey(key GenericKey, isSibkey bool, sigId *SigId, kid KID) (err error) {
+
+	if err = u.keyFamily.LocalDelegate(key, isSibkey, kid == nil); err != nil {
+		return
+	}
+
+	if u.sigChain == nil {
+		err = NoSigChainError{}
+		return
+	}
+
+	err = u.sigChain.LocalDelegate(key, sigId, kid)
+	return
 }
 
 //==================================================================

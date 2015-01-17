@@ -290,9 +290,11 @@ func (a *KeyGenArg) PGPUserIDs() ([]*packet.UserId, error) {
 }
 
 func (s *KeyGen) UpdateUser() error {
-	err := s.me.SetActiveKey(s.bundle)
+	err := s.me.localDelegateKey(s.bundle, true, nil, nil)
 	fp := s.bundle.GetFingerprint()
 	G.Env.GetConfigWriter().SetPgpFingerprint(&fp)
+	G.Log.Debug("| Fudge User Sig Chain")
+	s.me.sigChain.Bump(s.chainTail)
 	return err
 }
 
@@ -526,10 +528,6 @@ func (s *KeyGen) Push() (err error) {
 		return nil
 	}
 
-	G.Log.Debug("| UpdateUser")
-	if err = s.UpdateUser(); err != nil {
-		return
-	}
 	G.Log.Debug("| Generate HTTP Post")
 	if err = s.GeneratePost(); err != nil {
 		return
@@ -539,8 +537,10 @@ func (s *KeyGen) Push() (err error) {
 		return
 	}
 
-	G.Log.Debug("| Fudge User Sig Chain")
-	s.me.sigChain.Bump(s.chainTail)
+	G.Log.Debug("| UpdateUser")
+	if err = s.UpdateUser(); err != nil {
+		return
+	}
 
 	s.phase = KEYGEN_PHASE_POSTED
 

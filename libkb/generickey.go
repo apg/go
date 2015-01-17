@@ -115,3 +115,10 @@ func (f FOKID) ToStrings() (ret []string) {
 	}
 	return
 }
+
+func GenericKeyToFOKID(key GenericKey) FOKID {
+	return FOKID{
+		Kid: key.GetKid(),
+		Fp:  key.GetFingerprintP(),
+	}
+}

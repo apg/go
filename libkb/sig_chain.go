@@ -12,7 +12,15 @@ type SigChain struct {
 	chainLinks []*ChainLink
 	idVerified bool
 	allKeys    bool
-	ckf        ComputedKeyFamily
+
+	// The raw keys that are in use for this sigchain. Not all of them
+	// are active.  We have to look inside the chain links to see
+	// ComputeKeyInfos for the currently active chain.
+	kf *KeyFamily
+
+	// If we've locally delegated a key, it won't be reflected in our
+	// loaded chain, so we need to make a note of it here.
+	localCki *ComputedKeyInfos
 
 	// If we've made local modifications to our chain, mark it here;
 	// there's a slight lag on the server and we might not get the
@@ -25,6 +33,24 @@ type SigChain struct {
 
 func (sc SigChain) Len() int {
 	return len(sc.chainLinks)
+}
+
+func (sc *SigChain) LocalDelegate(key GenericKey, sigId *SigId, signingKid KID) (err error) {
+
+	// TODO: If we don't already have a sc.localCKI, then copy it from the last
+	// link.  Then molest it.
+	return
+}
+
+func (sc SigChain) GetComputedKeyFamily() (ret *ComputedKeyFamily) {
+
+	// TODO: Grab the localCKI if it's here instead of the one on the last link.
+
+	if l := sc.GetLastLink(); sc.kf != nil && l != nil && l.cki != nil {
+		obj := ComputedKeyFamily{kf: sc.kf, cki: l.cki}
+		ret = &obj
+	}
+	return
 }
 
 func (sc SigChain) GetFutureChainTail() (ret *MerkleTriple) {
@@ -135,6 +161,7 @@ func (sc *SigChain) LoadFromServer(t *MerkleTriple) (dirtyTail *LinkSummary, err
 		if sc.localChainTail != nil && sc.localChainTail.Less(*dirtyTail) {
 			G.Log.Debug("| Clear cached last (%d < %d)", sc.localChainTail.seqno, dirtyTail.seqno)
 			sc.localChainTail = nil
+			sc.localCki = nil
 		}
 	}
 
@@ -681,8 +708,9 @@ func (l *SigChainLoader) Load() (ret *SigChain, err error) {
 		return
 	}
 
-	// Store the computed key family into the returned SigChain
-	ret.ckf = l.ckf
+	// Store the raw KeyFamily in the sigchain.  The ComputedKeyInfos
+	// is stored in the relevant chainlinks.
+	ret.kf = l.ckf.kf
 
 	return
 }

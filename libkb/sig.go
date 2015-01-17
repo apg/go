@@ -30,7 +30,6 @@ func (s SigId) ToDisplayString(verbose bool) string {
 	} else {
 		return fmt.Sprintf("%s...", hex.EncodeToString(s[0:3]))
 	}
-
 }
 
 func SigIdFromSlice(s []byte) (*SigId, error) {
@@ -42,7 +41,6 @@ func SigIdFromSlice(s []byte) (*SigId, error) {
 		copy(ret[:], s)
 		return &ret, nil
 	}
-
 }
 
 func SigIdFromHex(s string, suffix bool) (*SigId, error) {

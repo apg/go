@@ -612,3 +612,11 @@ func (e BadRevocationError) Error() string {
 }
 
 //=============================================================================
+
+type NoSigChainError struct{}
+
+func (e NoSigChainError) Error() string {
+	return "No sigchain was available"
+}
+
+//=============================================================================

@@ -92,7 +92,7 @@ type ChainLink struct {
 	payloadJson *jsonw.Wrapper
 	unpacked    *ChainLinkUnpacked
 	lastChecked *CheckResult
-	cachedCki   *ComputedKeyInfos
+	cki         *ComputedKeyInfos
 
 	typed TypedChainLink
 }
@@ -132,8 +132,8 @@ func (c *ChainLink) Pack() error {
 	p.SetKey("fingerprint", jsonw.NewString(c.unpacked.pgpFingerprint.ToString()))
 	p.SetKey("sig_verified", jsonw.NewBool(c.sigVerified))
 
-	if c.cachedCki != nil {
-		p.SetKey("cached_cki", jsonw.NewWrapper(*c.cachedCki))
+	if c.cki != nil {
+		p.SetKey("computed_key_infos", jsonw.NewWrapper(*c.cki))
 	}
 
 	c.packed = p
@@ -254,7 +254,7 @@ func (c *ChainLink) UnpackComputedKeyInfos(jw *jsonw.Wrapper) (err error) {
 		return
 	}
 	if err = jw.UnmarshalAgain(&tmp); err != nil {
-		c.cachedCki = &tmp
+		c.cki = &tmp
 	}
 	return
 }
@@ -362,8 +362,8 @@ func (c ChainLink) GetSigId() *SigId {
 }
 
 func (c *ChainLink) GetSigCheckCache() (cki *ComputedKeyInfos) {
-	if c.sigVerified && c.cachedCki != nil {
-		cki = c.cachedCki
+	if c.sigVerified && c.cki != nil {
+		cki = c.cki
 	}
 	return
 }
@@ -372,7 +372,7 @@ func (c *ChainLink) PutSigCheckCache(cki *ComputedKeyInfos) {
 	G.Log.Debug("Caching SigCheck for link %s:", c.id.ToString())
 	c.sigVerified = true
 	c.dirty = true
-	c.cachedCki = cki
+	c.cki = cki
 	return
 }
 

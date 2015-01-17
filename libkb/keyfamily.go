@@ -386,3 +386,33 @@ func (ckf ComputedKeyFamily) FindKeybaseName(s string) bool {
 	}
 	return false
 }
+
+// LocalDelegate performs a local key delegation, without the server's permissions.
+// We'll need to do this when a key is locally generated.  If it's the eldest,
+// we'll try to mark the keyFamily as having an eldest, and will fail if there's
+// a clash.
+func (kf *KeyFamily) LocalDelegate(key GenericKey, isSibkey bool, eldest bool) (err error) {
+	if pgp, ok := key.(*PgpKeyBundle); ok {
+		kf.pgp2kid[pgp.GetFingerprint().ToString()] = pgp.GetKid()
+		kf.pgps = append(kf.pgps, pgp)
+	}
+	kid_s := key.GetKid().ToString()
+	skr := ServerKeyRecord{key: key}
+	if isSibkey {
+		kf.Sibkeys[kid_s] = skr
+	} else {
+		kf.Subkeys[kid_s] = skr
+	}
+
+	fokid := GenericKeyToFOKID(key)
+
+	if !eldest || !isSibkey {
+	} else if kf.eldest != nil && !kf.eldest.Eq(fokid) {
+		err = KeyFamilyError{fmt.Sprintf("Fokid mismatch on eldest key: %s != %s",
+			fokid.ToString(), kf.eldest.ToString())}
+	} else if kf.eldest == nil {
+		kf.eldest = &fokid
+	}
+
+	return
+}
