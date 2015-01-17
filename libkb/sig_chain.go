@@ -387,16 +387,11 @@ func (sc *SigChain) VerifySigsAndComputeKeys(ckf *ComputedKeyFamily) (cached boo
 		return
 	}
 
-	// XXX TODO XXX
-	//
-	// Verify the ID of the User given the active PGP keys in the key family
-	// and also the links of the chained with signed-in usernames.
-	// Use to be:
-	//
-	// if err = sc.VerifyId(key); err != nil {
-	// 	return
-	// }
-	//
+	// We used to check for a self-signature of one's keybase username
+	// here, but that doesn't make sense because we haven't accounted
+	// for revocations.  We'll go it later, after reconstructing
+	// the id_table.  See LoadUser in user.go and
+	// https://github.com/keybase/go/issues/43
 
 	G.Log.Debug("- VerifySigsAndComputeKeys for user %s -> %v", uid_s, (err == nil))
 

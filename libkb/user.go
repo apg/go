@@ -736,10 +736,8 @@ func LoadUser(arg LoadUserArg) (ret *User, err error) {
 			return
 		}
 
-		// XXX this is actually the second time we're checking this;
-		// We're also checking it in 	VerifySigChain(); However, in this
-		// case, we're looking out for revoked signature chains.
-		// See https://github.com/keybase/go-libkb/issues/52
+		// Check that the user has self-signed only after we
+		// consider revocations. See: https://github.com/keybase/go/issues/43
 		if err = ret.VerifySelfSig(); err != nil {
 			return
 		}
