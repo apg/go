@@ -763,8 +763,11 @@ func LoadUser(arg LoadUserArg) (ret *User, err error) {
 }
 
 func (u User) HasActiveKey() bool {
-	key, err := u.GetActiveKey()
-	return key != nil && err == nil
+	if ckf := u.GetComputedKeyFamily(); ckf == nil {
+		return false
+	} else {
+		return ckf.HasActiveKey()
+	}
 }
 
 func (u1 User) Equal(u2 User) bool {
@@ -855,7 +858,7 @@ func (u *User) checkKeyFingerprint(arg LoadUserArg) error {
 // we can use the key without needing a refresh from the server.  The eventual
 // refresh we do get from the server will clobber our work here.
 func (u *User) localDelegateKey(key GenericKey, sigId *SigId, kid KID, isSibkey bool) (err error) {
-	
+
 	if err = u.keyFamily.LocalDelegate(key, isSibkey, kid == nil); err != nil {
 		return
 	}

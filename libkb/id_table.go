@@ -659,17 +659,17 @@ func (s *SelfSigChainLink) GetIntType() int { return PROOF_TYPE_KEYBASE }
 //=========================================================================
 
 type IdentityTable struct {
-	sigChain          *SigChain
-	revocations       map[SigId]bool
-	links             map[SigId]TypedChainLink
-	remoteProofs      map[string][]RemoteProofChainLink
-	tracks            map[string][]*TrackChainLink
-	Order             []TypedChainLink
-	sigHints          *SigHints
-	activeProofs      []RemoteProofChainLink
-	cryptocurrency    []*CryptocurrencyChainLink
-	checkResult       *CheckResult
-	eldest FOKID
+	sigChain       *SigChain
+	revocations    map[SigId]bool
+	links          map[SigId]TypedChainLink
+	remoteProofs   map[string][]RemoteProofChainLink
+	tracks         map[string][]*TrackChainLink
+	Order          []TypedChainLink
+	sigHints       *SigHints
+	activeProofs   []RemoteProofChainLink
+	cryptocurrency []*CryptocurrencyChainLink
+	checkResult    *CheckResult
+	eldest         FOKID
 }
 
 func (tab *IdentityTable) GetActiveProofsFor(st ServiceType) (ret []RemoteProofChainLink) {
@@ -754,16 +754,16 @@ func NewTypedChainLink(cl *ChainLink) (ret TypedChainLink, w Warning) {
 
 func NewIdentityTable(eldest FOKID, sc *SigChain, h *SigHints) *IdentityTable {
 	ret := &IdentityTable{
-		sigChain:          sc,
-		revocations:       make(map[SigId]bool),
-		links:             make(map[SigId]TypedChainLink),
-		remoteProofs:      make(map[string][]RemoteProofChainLink),
-		tracks:            make(map[string][]*TrackChainLink),
-		Order:             make([]TypedChainLink, 0, sc.Len()),
-		sigHints:          h,
-		activeProofs:      make([]RemoteProofChainLink, 0, sc.Len()),
-		cryptocurrency:    make([]*CryptocurrencyChainLink, 0, 0),
-		eldest: eldest,
+		sigChain:       sc,
+		revocations:    make(map[SigId]bool),
+		links:          make(map[SigId]TypedChainLink),
+		remoteProofs:   make(map[string][]RemoteProofChainLink),
+		tracks:         make(map[string][]*TrackChainLink),
+		Order:          make([]TypedChainLink, 0, sc.Len()),
+		sigHints:       h,
+		activeProofs:   make([]RemoteProofChainLink, 0, sc.Len()),
+		cryptocurrency: make([]*CryptocurrencyChainLink, 0, 0),
+		eldest:         eldest,
 	}
 	ret.Populate()
 	ret.CollectAndDedupeActiveProofs()

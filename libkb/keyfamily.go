@@ -455,3 +455,16 @@ func (kf *KeyFamily) LocalDelegate(key GenericKey, isSibkey bool, eldest bool) (
 
 	return
 }
+
+func (ckf ComputedKeyFamily) HasActiveKey() bool {
+	return ckf.cki.HasActiveKey()
+}
+
+func (cki ComputedKeyInfos) HasActiveKey() bool {
+	for _, v := range cki.Infos {
+		if v.Status == KEY_LIVE {
+			return true
+		}
+	}
+	return false
+}

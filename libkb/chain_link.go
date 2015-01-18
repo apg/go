@@ -522,7 +522,7 @@ func (c *ChainLink) ToFOKID() (ret FOKID) {
 // FOKID from it. Legacy links don't specify it, so we'll have to infer
 func (c *ChainLink) ToEldestFOKID() (ret FOKID) {
 	if c.unpacked.eldestKid != nil {
-		ret = FOKID{Kid: c.unpacked.eldestKid }
+		ret = FOKID{Kid: c.unpacked.eldestKid}
 	} else {
 		ret = c.ToFOKID()
 	}
