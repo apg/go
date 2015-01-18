@@ -304,8 +304,6 @@ func (b BadFingerprintError) Error() string {
 
 //=============================================================================
 
-//=============================================================================
-
 type AppStatusError struct {
 	Code   int
 	Name   string
@@ -617,6 +615,14 @@ type NoSigChainError struct{}
 
 func (e NoSigChainError) Error() string {
 	return "No sigchain was available"
+}
+
+//=============================================================================
+
+type NotProvisionedError struct{}
+
+func (e NotProvisionedError) Error() string {
+	return "This device isn't provisioned (no 'device_kid' entry in config.json)"
 }
 
 //=============================================================================

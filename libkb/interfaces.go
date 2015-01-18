@@ -42,6 +42,7 @@ type CommandLine interface {
 	GetDaemonPort() (int, bool)
 	GetStandalone() (bool, bool)
 	GetLocalRpcDebug() string
+	GetPerDeviceKID() string
 }
 
 type Server interface {
@@ -96,7 +97,7 @@ type ConfigReader interface {
 	GetDaemonPort() (int, bool)
 	GetStandalone() (bool, bool)
 	GetLocalRpcDebug() string
-	GetPerDeviceKID() KID
+	GetPerDeviceKID() string
 }
 
 type ConfigWriter interface {

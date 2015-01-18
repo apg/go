@@ -342,11 +342,9 @@ func (f JsonConfigFile) GetDaemonPort() (int, bool) {
 	return f.GetIntAtPath("daemon_port")
 }
 
-func (f JsonConfigFile) GetPerDeviceKID() (ret KID) {
+func (f JsonConfigFile) GetPerDeviceKID() (ret string) {
 	if f.jw != nil {
-		if kid, err := GetKID(f.jw.AtKey("device_kid")); err != nil {
-			G.Log.Warning("Error reading 'device_kid' from configfile: %s", err.Error())
-		} else {
+		if kid, err := f.jw.AtKey("device_kid").GetString(); err == nil {
 			ret = kid
 		}
 	}
