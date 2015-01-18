@@ -581,13 +581,15 @@ func LookupMerkleLeaf(uid UID, local *User) (f *MerkleUserLeaf, err error) {
 	return
 }
 
-func (u *User) MakeIdTable(allKeys bool) (err error) {
-	var fp *PgpFingerprint
-	if fp, err = u.GetActivePgpFingerprint(); err != nil {
-	} else if fp == nil {
+func (u *User) GetEldestFOKD() (ret *FOKID) {
+	return u.keyFamily.eldest
+}
+
+func (u *User) MakeIdTable() (err error) {
+	if fokid := u.GetEldestFOKD(); fokid == nil {
 		err = NoKeyError{"Expected a key but didn't find one"}
 	} else {
-		u.IdTable = NewIdentityTable(*fp, u.sigChain, u.sigHints)
+		u.IdTable = NewIdentityTable(*fokid, u.sigChain, u.sigHints)
 	}
 	return nil
 }
@@ -729,7 +731,7 @@ func LoadUser(arg LoadUserArg) (ret *User, err error) {
 
 	if ret.HasActiveKey() {
 
-		if err = ret.MakeIdTable(arg.AllKeys); err != nil {
+		if err = ret.MakeIdTable(); err != nil {
 			return
 		}
 
@@ -853,16 +855,14 @@ func (u *User) checkKeyFingerprint(arg LoadUserArg) error {
 // we can use the key without needing a refresh from the server.  The eventual
 // refresh we do get from the server will clobber our work here.
 func (u *User) localDelegateKey(key GenericKey, sigId *SigId, kid KID, isSibkey bool) (err error) {
-
+	
 	if err = u.keyFamily.LocalDelegate(key, isSibkey, kid == nil); err != nil {
 		return
 	}
-
 	if u.sigChain == nil {
 		err = NoSigChainError{}
 		return
 	}
-
 	err = u.sigChain.LocalDelegate(u.keyFamily, key, sigId, kid, isSibkey)
 	return
 }

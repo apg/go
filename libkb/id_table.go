@@ -669,7 +669,7 @@ type IdentityTable struct {
 	activeProofs      []RemoteProofChainLink
 	cryptocurrency    []*CryptocurrencyChainLink
 	checkResult       *CheckResult
-	activeFingerprint PgpFingerprint
+	eldest FOKID
 }
 
 func (tab *IdentityTable) GetActiveProofsFor(st ServiceType) (ret []RemoteProofChainLink) {
@@ -752,7 +752,7 @@ func NewTypedChainLink(cl *ChainLink) (ret TypedChainLink, w Warning) {
 	return
 }
 
-func NewIdentityTable(active PgpFingerprint, sc *SigChain, h *SigHints) *IdentityTable {
+func NewIdentityTable(eldest FOKID, sc *SigChain, h *SigHints) *IdentityTable {
 	ret := &IdentityTable{
 		sigChain:          sc,
 		revocations:       make(map[SigId]bool),
@@ -763,7 +763,7 @@ func NewIdentityTable(active PgpFingerprint, sc *SigChain, h *SigHints) *Identit
 		sigHints:          h,
 		activeProofs:      make([]RemoteProofChainLink, 0, sc.Len()),
 		cryptocurrency:    make([]*CryptocurrencyChainLink, 0, 0),
-		activeFingerprint: active,
+		eldest: eldest,
 	}
 	ret.Populate()
 	ret.CollectAndDedupeActiveProofs()
@@ -772,7 +772,7 @@ func NewIdentityTable(active PgpFingerprint, sc *SigChain, h *SigHints) *Identit
 
 func (idt *IdentityTable) Populate() {
 	G.Log.Debug("+ Populate ID Table")
-	for _, link := range idt.sigChain.VerifiedChainLinks(idt.activeFingerprint) {
+	for _, link := range idt.sigChain.LimitToEldestFOKID(idt.eldest) {
 		tl, w := NewTypedChainLink(link)
 		tl.insertIntoTable(idt)
 		if w != nil {

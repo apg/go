@@ -270,6 +270,12 @@ func (sc *SigChain) LimitToKeyFamily(kf *KeyFamily) (links []*ChainLink) {
 	if fokid = kf.GetEldest(); fokid == nil {
 		return
 	}
+	return sc.LimitToEldestFOKID(*fokid)
+}
+
+// LimitToEldestFOKID takes the given sigchain and walks backward,
+// stopping once it scrolls of the current FOKID.
+func (sc *SigChain) LimitToEldestFOKID(fokid FOKID) (links []*ChainLink) {
 	if sc.chainLinks == nil {
 		return
 	}

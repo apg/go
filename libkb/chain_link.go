@@ -531,8 +531,8 @@ func (c *ChainLink) ToEldestFOKID() (ret FOKID) {
 
 // MatchFOKID checks if the given ChainLink matches the given
 // FOKID using standard FOKID equality.
-func (c *ChainLink) MatchEldestFOKID(fokid *FOKID) bool {
-	return c.ToEldestFOKID().Eq(*fokid)
+func (c *ChainLink) MatchEldestFOKID(fokid FOKID) bool {
+	return c.ToEldestFOKID().Eq(fokid)
 }
 
 func (c *ChainLink) GetPgpFingerprint() *PgpFingerprint { return c.unpacked.pgpFingerprint }
