@@ -202,6 +202,17 @@ func (k P3SKBKeyringFile) LookupByFingerprint(fp PgpFingerprint) *P3SKB {
 	return ret
 }
 
+// FindSecretKey will, given a list of KIDs, find the first one in the
+// list that has a corresponding secret key in the keyring file.
+func (f P3SKBKeyringFile) FindSecretKey(kids []KID) (ret *P3SKB) {
+	for _, kid := range kids {
+		if ret = f.LookupByKid(kid); ret != nil {
+			return
+		}
+	}
+	return
+}
+
 func (f P3SKBKeyringFile) LookupByKid(k KID) *P3SKB {
 	ret, ok := f.kidIndex[k.ToMapKey()]
 	if !ok {

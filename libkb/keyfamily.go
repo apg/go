@@ -456,6 +456,43 @@ func (kf *KeyFamily) LocalDelegate(key GenericKey, isSibkey bool, eldest bool) (
 	return
 }
 
+// IsKidActive computes whether the given KID is active, and if so,
+// whether it's a sib or subkey
+func (ckf ComputedKeyFamily) IsKidActive(kid KID) (ret int) {
+	return ckf.isKidHexActive(kid.ToString())
+}
+
+func (ckf ComputedKeyFamily) isKidHexActive(hex string) (ret int) {
+	if info, ok := ckf.cki.Infos[hex]; !ok || info.Status != KEY_LIVE {
+		ret = DLG_NONE
+	} else if info.Sibkey {
+		ret = DLG_SIBKEY
+	} else {
+		ret = DLG_SUBKEY
+	}
+	return
+}
+
+// GetAllActiveSibkeys gets all active Sibkeys from given ComputedKeyFamily,
+// sorted from oldest to newest.
+func (ckf ComputedKeyFamily) GetAllActiveSibkeys() (ret []GenericKey) {
+	for _, skr := range ckf.kf.Sibkeys {
+		if ckf.isKidHexActive(skr.Kid) == DLG_SIBKEY && skr.key != nil {
+			ret = append(ret, skr.key)
+		}
+	}
+	return
+}
+
+// GetAllActiveSibkeyKIDs gets all active Sibkeys from given ComputedKeyFamily,
+// sorted from oldest to newest, and returns their KIDs
+func (ckf ComputedKeyFamily) GetAllActiveSibkeysKIDs() (ret []KID) {
+	for _, key := range ckf.GetAllActiveSibkeys() {
+		ret = append(ret, key.GetKid())
+	}
+	return
+}
+
 // HasActiveKey returns if the given ComputeKeyFamily has any active keys.
 func (ckf ComputedKeyFamily) HasActiveKey() bool {
 	return ckf.cki.HasActiveKey()
