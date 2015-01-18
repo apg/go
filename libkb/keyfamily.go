@@ -456,10 +456,12 @@ func (kf *KeyFamily) LocalDelegate(key GenericKey, isSibkey bool, eldest bool) (
 	return
 }
 
+// HasActiveKey returns if the given ComputeKeyFamily has any active keys.
 func (ckf ComputedKeyFamily) HasActiveKey() bool {
 	return ckf.cki.HasActiveKey()
 }
 
+// HasActiveKey returns if the given ComputeKeyInfos has any active keys.
 func (cki ComputedKeyInfos) HasActiveKey() bool {
 	for _, v := range cki.Infos {
 		if v.Status == KEY_LIVE {
@@ -467,4 +469,15 @@ func (cki ComputedKeyInfos) HasActiveKey() bool {
 		}
 	}
 	return false
+}
+
+func (ckf ComputedKeyFamily) GetActivePgpKeys(sibkey bool) (ret []*PgpKeyBundle) {
+	for _, pgp := range ckf.kf.pgps {
+		if info, ok := ckf.cki.Infos[pgp.GetKid().ToString()]; ok {
+			if (!sibkey || info.Sibkey) && info.Status == KEY_LIVE {
+				ret = append(ret, pgp)
+			}
+		}
+	}	
+	return
 }
