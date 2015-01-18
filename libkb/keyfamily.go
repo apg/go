@@ -6,6 +6,7 @@ package libkb
 import (
 	"fmt"
 	"github.com/keybase/go-jsonw"
+	"time"
 )
 
 // We have two notions of time we can use -- standard UTC which might
@@ -98,8 +99,8 @@ func (cki *ComputedKeyInfos) Insert(f *FOKID, i *ComputedKeyInfo) {
 	}
 }
 
-func (cki ComputedKeyInfos) Copy() ComputedKeyInfos {
-	ret := ComputedKeyInfos{
+func (cki ComputedKeyInfos) Copy() *ComputedKeyInfos {
+	ret := &ComputedKeyInfos{
 		dirty: cki.dirty,
 		Infos: make(map[string]*ComputedKeyInfo),
 		Sigs:  make(map[SigId]*ComputedKeyInfo),
@@ -313,6 +314,15 @@ func TclToKeybaseTime(tcl TypedChainLink) *KeybaseTime {
 	}
 }
 
+// NowAsKeybaseTime makes a representation of now.  IF we don't know the MerkleTree
+// chain seqno, just use 0
+func NowAsKeybaseTime(seqno int) *KeybaseTime {
+	return &KeybaseTime{
+		Unix:  time.Now().Unix(),
+		Chain: seqno,
+	}
+}
+
 // Delegate performs a delegation to the key described in the given TypedChainLink.
 // This maybe be a sub- or sibkey delegation.
 func (ckf *ComputedKeyFamily) Delegate(tcl TypedChainLink) (err error) {
@@ -321,7 +331,14 @@ func (ckf *ComputedKeyFamily) Delegate(tcl TypedChainLink) (err error) {
 	sigid := tcl.GetSigId()
 	tm := TclToKeybaseTime(tcl)
 
-	info, found := ckf.cki.Infos[kid_s]
+	err = ckf.cki.Delegate(kid_s, tm, sigid, tcl.GetKid(), (tcl.IsDelegation() == DLG_SIBKEY))
+	return
+}
+
+// Delegate marks the given ComputedKeyInfos object that the given kid_s is now
+// delegated, as of time tm, in sigid, as signed by signingKid, etc.
+func (cki *ComputedKeyInfos) Delegate(kid_s string, tm *KeybaseTime, sigid SigId, signingKid KID, isSibkey bool) (err error) {
+	info, found := cki.Infos[kid_s]
 	if !found {
 		info = &ComputedKeyInfo{
 			Eldest:      false,
@@ -329,15 +346,13 @@ func (ckf *ComputedKeyFamily) Delegate(tcl TypedChainLink) (err error) {
 			Delegations: make(map[SigId]KID),
 			DelegatedAt: tm,
 		}
-		ckf.cki.Infos[kid_s] = info
+		cki.Infos[kid_s] = info
 	} else {
 		info.Status = KEY_LIVE
 	}
-	info.Delegations[sigid] = tcl.GetKid()
-	if tcl.IsDelegation() == DLG_SIBKEY {
-		info.Sibkey = true
-	}
-	ckf.cki.Sigs[sigid] = info
+	info.Delegations[sigid] = signingKid
+	info.Sibkey = isSibkey
+	cki.Sigs[sigid] = info
 	return
 }
 

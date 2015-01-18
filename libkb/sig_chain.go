@@ -13,11 +13,6 @@ type SigChain struct {
 	idVerified bool
 	allKeys    bool
 
-	// The raw keys that are in use for this sigchain. Not all of them
-	// are active.  We have to look inside the chain links to see
-	// ComputeKeyInfos for the currently active chain.
-	kf *KeyFamily
-
 	// If we've locally delegated a key, it won't be reflected in our
 	// loaded chain, so we need to make a note of it here.
 	localCki *ComputedKeyInfos
@@ -35,20 +30,32 @@ func (sc SigChain) Len() int {
 	return len(sc.chainLinks)
 }
 
-func (sc *SigChain) LocalDelegate(key GenericKey, sigId *SigId, signingKid KID) (err error) {
+func (sc *SigChain) LocalDelegate(kf *KeyFamily, key GenericKey, sigId *SigId, signingKid KID, isSibkey bool) (err error) {
 
-	// TODO: If we don't already have a sc.localCKI, then copy it from the last
-	// link.  Then molest it.
+	cki := sc.localCki
+	l := sc.GetLastLink()
+	if cki == nil && l != nil && l.cki != nil {
+		cki = l.cki.Copy()
+	}
+	if cki == nil {
+		cki = kf.NewComputedKeyInfos()
+	}
+	l.cki = cki
+
+	if sigId != nil {
+		err = cki.Delegate(key.GetKid().ToString(), NowAsKeybaseTime(0), *sigId, signingKid, isSibkey)
+	}
+
 	return
 }
 
-func (sc SigChain) GetComputedKeyFamily() (ret *ComputedKeyFamily) {
+func (sc SigChain) GetComputedKeyInfos() (cki *ComputedKeyInfos) {
 
-	// TODO: Grab the localCKI if it's here instead of the one on the last link.
-
-	if l := sc.GetLastLink(); sc.kf != nil && l != nil && l.cki != nil {
-		obj := ComputedKeyFamily{kf: sc.kf, cki: l.cki}
-		ret = &obj
+	cki = sc.localCki
+	if cki == nil {
+		if l := sc.GetLastLink(); l != nil {
+			cki = l.cki
+		}
 	}
 	return
 }
@@ -707,10 +714,6 @@ func (l *SigChainLoader) Load() (ret *SigChain, err error) {
 	if err = l.Store(); err != nil {
 		return
 	}
-
-	// Store the raw KeyFamily in the sigchain.  The ComputedKeyInfos
-	// is stored in the relevant chainlinks.
-	ret.kf = l.ckf.kf
 
 	return
 }

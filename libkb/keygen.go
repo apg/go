@@ -290,7 +290,7 @@ func (a *KeyGenArg) PGPUserIDs() ([]*packet.UserId, error) {
 }
 
 func (s *KeyGen) UpdateUser() error {
-	err := s.me.localDelegateKey(s.bundle, true, nil, nil)
+	err := s.me.localDelegateKey(s.bundle, nil, nil, true)
 	fp := s.bundle.GetFingerprint()
 	G.Env.GetConfigWriter().SetPgpFingerprint(&fp)
 	G.Log.Debug("| Fudge User Sig Chain")
