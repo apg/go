@@ -481,6 +481,6 @@ func (ckf ComputedKeyFamily) GetActivePgpKeys(sibkey bool) (ret []*PgpKeyBundle)
 				ret = append(ret, pgp)
 			}
 		}
-	}	
+	}
 	return
 }

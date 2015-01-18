@@ -33,7 +33,7 @@ func (n NullConfiguration) GetSocketFile() string              { return "" }
 func (n NullConfiguration) GetDaemonPort() (int, bool)         { return 0, false }
 func (n NullConfiguration) GetStandalone() (bool, bool)        { return false, false }
 func (n NullConfiguration) GetLocalRpcDebug() string           { return "" }
-func (n NullConfiguration) GetPerDeviceKID() KID { return nil }
+func (n NullConfiguration) GetPerDeviceKID() KID               { return nil }
 
 func (n NullConfiguration) GetDebug() (bool, bool) {
 	return false, false

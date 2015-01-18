@@ -350,5 +350,15 @@ func (f JsonConfigFile) GetPerDeviceKID() (ret KID) {
 			ret = kid
 		}
 	}
-	return 
+	return
+}
+
+func (f *JsonConfigFile) SetPerDeviceKID(kid KID) (err error) {
+	key := "device_kid"
+	if kid == nil {
+		f.DeleteUserField(key)
+	} else {
+		f.SetUserField(key, kid.ToString())
+	}
+	return
 }

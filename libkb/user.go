@@ -300,7 +300,6 @@ func (u *User) GetComputedKeyFamily() (ret *ComputedKeyFamily) {
 	return
 }
 
-
 // GetActivePgpKeys looks into the user's ComputedKeyFamily and
 // returns only the active PGP keys.  If you want only sibkeys, then
 // specify sibkey=true.
@@ -308,12 +307,11 @@ func (u User) GetActivePgpKeys(sibkey bool) (ret []*PgpKeyBundle) {
 	if ckf := u.GetComputedKeyFamily(); ckf != nil {
 		ret = ckf.GetActivePgpKeys(sibkey)
 	}
-	return 
+	return
 }
 
-
 // GetActivePgpKeys looks into the user's ComputedKeyFamily and
-// returns only the fingerprint of the active PGP keys.  
+// returns only the fingerprint of the active PGP keys.
 // If you want only sibkeys, then // specify sibkey=true.
 func (u User) GetActivePgpKeyFingerprints(sibkey bool) (ret []PgpFingerprint) {
 	for _, pgp := range u.GetActivePgpKeys(sibkey) {

@@ -104,7 +104,7 @@ type ConfigWriter interface {
 	SetUid(UID)
 	SetPgpFingerprint(*PgpFingerprint)
 	SetSalt([]byte)
-	SetPerDeviceKID(string) error
+	SetPerDeviceKID(KID) error
 	SetStringAtPath(string, string) error
 	SetBoolAtPath(string, bool) error
 	SetIntAtPath(string, int) error
