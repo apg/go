@@ -96,6 +96,7 @@ type ConfigReader interface {
 	GetDaemonPort() (int, bool)
 	GetStandalone() (bool, bool)
 	GetLocalRpcDebug() string
+	GetPerDeviceKID() KID
 }
 
 type ConfigWriter interface {
@@ -103,6 +104,7 @@ type ConfigWriter interface {
 	SetUid(UID)
 	SetPgpFingerprint(*PgpFingerprint)
 	SetSalt([]byte)
+	SetPerDeviceKID(string) error
 	SetStringAtPath(string, string) error
 	SetBoolAtPath(string, bool) error
 	SetIntAtPath(string, int) error

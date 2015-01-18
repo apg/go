@@ -341,3 +341,14 @@ func (f JsonConfigFile) GetSocketFile() string {
 func (f JsonConfigFile) GetDaemonPort() (int, bool) {
 	return f.GetIntAtPath("daemon_port")
 }
+
+func (f JsonConfigFile) GetPerDeviceKID() (ret KID) {
+	if f.jw != nil {
+		if kid, err := GetKID(f.jw.AtKey("device_kid")); err != nil {
+			G.Log.Warning("Error reading 'device_kid' from configfile: %s", err.Error())
+		} else {
+			ret = kid
+		}
+	}
+	return 
+}

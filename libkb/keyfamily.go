@@ -471,6 +471,9 @@ func (cki ComputedKeyInfos) HasActiveKey() bool {
 	return false
 }
 
+// GetActivePgpKeys gets the active PGP keys from the ComputedKeyFamily.
+// If sibkey is False it will return all active PGP keys. Otherwise, it
+// will return only the Sibkeys.
 func (ckf ComputedKeyFamily) GetActivePgpKeys(sibkey bool) (ret []*PgpKeyBundle) {
 	for _, pgp := range ckf.kf.pgps {
 		if info, ok := ckf.cki.Infos[pgp.GetKid().ToString()]; ok {
