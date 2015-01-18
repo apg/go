@@ -276,7 +276,7 @@ func (sc *SigChain) LimitToKeyFamily(kf *KeyFamily) (links []*ChainLink) {
 	l := len(sc.chainLinks)
 	lastGood := l
 	for i := l - 1; i >= 0; i-- {
-		if sc.chainLinks[i].MatchFOKID(fokid) {
+		if sc.chainLinks[i].MatchEldestFOKID(fokid) {
 			lastGood = i
 		} else {
 			break

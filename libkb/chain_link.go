@@ -69,6 +69,7 @@ type ChainLinkUnpacked struct {
 	ctime, etime   int64
 	pgpFingerprint *PgpFingerprint
 	kid            KID
+	eldestKid      KID
 	sig            string
 	sigId          SigId
 	uid            UID
@@ -215,6 +216,11 @@ func (c *ChainLink) UnpackPayloadJson(tmp *ChainLinkUnpacked) (err error) {
 	}
 	if jw := c.payloadJson.AtPath("body.key.kid"); !jw.IsNil() {
 		if tmp.kid, e2 = GetKID(jw); e2 != nil {
+			err = e2
+		}
+	}
+	if jw := c.payloadJson.AtPath("body.key.eldest_kid"); !jw.IsNil() {
+		if tmp.eldestKid, e2 = GetKID(jw); e2 != nil {
 			err = e2
 		}
 	}
@@ -502,17 +508,31 @@ func (l *ChainLink) Store() (didStore bool, err error) {
 	return
 }
 
-func (c *ChainLink) ToFOKID() FOKID {
-	return FOKID{
-		Kid: c.unpacked.kid,
+// ToFOKID takes the current chain link and extracts the current (signing)
+// FOKID
+func (c *ChainLink) ToFOKID() (ret FOKID) {
+	ret = FOKID{
 		Fp:  c.unpacked.pgpFingerprint,
+		Kid: c.unpacked.kid,
 	}
+	return
+}
+
+// ToEldestFOKID takes the current chain link and extracts the eldest
+// FOKID from it. Legacy links don't specify it, so we'll have to infer
+func (c *ChainLink) ToEldestFOKID() (ret FOKID) {
+	if c.unpacked.eldestKid != nil {
+		ret = FOKID{Kid: c.unpacked.eldestKid }
+	} else {
+		ret = c.ToFOKID()
+	}
+	return
 }
 
 // MatchFOKID checks if the given ChainLink matches the given
 // FOKID using standard FOKID equality.
-func (c *ChainLink) MatchFOKID(fokid *FOKID) bool {
-	return c.ToFOKID().Eq(*fokid)
+func (c *ChainLink) MatchEldestFOKID(fokid *FOKID) bool {
+	return c.ToEldestFOKID().Eq(*fokid)
 }
 
 func (c *ChainLink) GetPgpFingerprint() *PgpFingerprint { return c.unpacked.pgpFingerprint }
