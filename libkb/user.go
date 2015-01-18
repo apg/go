@@ -755,10 +755,6 @@ func LoadUser(arg LoadUserArg) (ret *User, err error) {
 			return
 		}
 
-		if err = ret.checkKeyFingerprint(arg); err != nil {
-			return
-		}
-
 		// Check that the user has self-signed only after we
 		// consider revocations. See: https://github.com/keybase/go/issues/43
 		if err = ret.VerifySelfSig(); err != nil {
@@ -845,36 +841,7 @@ func (u User) ToOkProofSet() *ProofSet {
 	return NewProofSet(proofs)
 }
 
-func (u *User) checkKeyFingerprint(arg LoadUserArg) error {
-
-	fp, err := u.GetActivePgpFingerprint()
-
-	if err != nil {
-		return err
-	}
-
-	key, err := u.GetActiveKey()
-	if err != nil {
-		return err
-	}
-
-	if err = key.CheckFingerprint(fp); err != nil {
-		return err
-	}
-
-	if arg.Self {
-		fp2 := G.Env.GetPgpFingerprint()
-		if fp2 == nil {
-			return NoSelectedKeyError{fp}
-		} else if !fp.Eq(*fp2) {
-			return WrongKeyError{fp, fp2}
-		}
-	}
-
-	return nil
-}
-
-// localProvisionKey takes the given GenericKey and provisions it locally so that
+// localDelegateKey takes the given GenericKey and provisions it locally so that
 // we can use the key without needing a refresh from the server.  The eventual
 // refresh we do get from the server will clobber our work here.
 func (u *User) localDelegateKey(key GenericKey, sigId *SigId, kid KID, isSibkey bool) (err error) {
