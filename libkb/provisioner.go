@@ -13,6 +13,9 @@ func (sp *SelfProvisioner) LoadMe() (err error) {
 	return
 }
 
+// CheckProvisioned checks the current status of our client, to see if
+// it's provisioned or not, and if so, whether we have the corresponding
+// private key.
 func (sp *SelfProvisioner) CheckProvisioned() (err error) {
 	if kid := G.Env.GetPerDeviceKID(); kid == nil {
 		err = NotProvisionedError{}
