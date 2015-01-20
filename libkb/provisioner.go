@@ -2,7 +2,6 @@ package libkb
 
 // Provision ourselves or other devices via the various key exchange
 // posibilities
-
 type SelfProvisioner struct {
 	me        *User
 	secretKey *P3SKB
@@ -24,5 +23,41 @@ func (sp *SelfProvisioner) CheckProvisioned() (err error) {
 	} else if sp.secretKey = ring.LookupByKid(kid); sp.secretKey == nil {
 		err = NoSecretKeyError{}
 	}
+	return
+}
+
+// FindBestReprovisionKeys finds the best key to use for reprovisioning a device
+// if the user's config file was corrupted.  It will look at all active sibkeys,
+// and all locally stored and available secret keys, and pick one to use.
+func (sp *SelfProvisioner) FindBestReprovisionKey() (ret GenericKey, err error) {
+	if sp.me == nil {
+		err = InternalError{"no user loaded"}
+		return
+	}
+
+	ckf := sp.me.GetComputedKeyFamily()
+	if ckf == nil {
+		err = NoKeyError{"no keys were available"}
+		return
+	}
+
+	ring := G.Keyrings.P3SKB
+	if ring == nil {
+		err = NoKeyringsError{}
+		return
+	}
+
+	for i := len(ring.Blocks) - 1; i >= 0; i-- {
+		if block := ring.Blocks[i]; block == nil {
+			continue
+		} else if key, e2 := block.GetPubKey(); key == nil || e2 != nil {
+			continue
+		} else if key2, e2 := ckf.FindActiveSibkey(GenericKeyToFOKID(key)); key2 != nil && e2 == nil {
+			ret = key
+			return
+		}
+	}
+
+	err = NoSecretKeyError{}
 	return
 }
