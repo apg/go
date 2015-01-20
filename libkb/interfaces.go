@@ -43,6 +43,7 @@ type CommandLine interface {
 	GetStandalone() (bool, bool)
 	GetLocalRpcDebug() string
 	GetPerDeviceKID() string
+	GetDeviceId() string
 }
 
 type Server interface {
@@ -98,6 +99,7 @@ type ConfigReader interface {
 	GetStandalone() (bool, bool)
 	GetLocalRpcDebug() string
 	GetPerDeviceKID() string
+	GetDeviceId() string
 }
 
 type ConfigWriter interface {
@@ -106,6 +108,7 @@ type ConfigWriter interface {
 	SetPgpFingerprint(*PgpFingerprint)
 	SetSalt([]byte)
 	SetPerDeviceKID(KID) error
+	SetDeviceId(*DeviceId) error
 	SetStringAtPath(string, string) error
 	SetBoolAtPath(string, bool) error
 	SetIntAtPath(string, int) error

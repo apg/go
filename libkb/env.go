@@ -34,6 +34,7 @@ func (n NullConfiguration) GetDaemonPort() (int, bool)         { return 0, false
 func (n NullConfiguration) GetStandalone() (bool, bool)        { return false, false }
 func (n NullConfiguration) GetLocalRpcDebug() string           { return "" }
 func (n NullConfiguration) GetPerDeviceKID() string            { return "" }
+func (n NullConfiguration) GetDeviceId() string                { return "" }
 
 func (n NullConfiguration) GetDebug() (bool, bool) {
 	return false, false
@@ -501,6 +502,21 @@ func (e Env) GetPerDeviceKID() (ret KID) {
 		G.Log.Warning("Error importing KID %s: %s", s, err.Error())
 	} else {
 		ret = kid
+	}
+	return
+}
+
+func (e Env) GetDeviceId() (ret *DeviceId) {
+	s := e.GetString(
+		func() string { return e.cmd.GetDeviceId() },
+		func() string { return os.Getenv("KEYBASE_DEVICE_ID") },
+		func() string { return e.config.GetDeviceId() },
+	)
+	if len(s) == 0 {
+	} else if did, err := ImportDeviceId(s); err != nil {
+		G.Log.Warning("Error importing Device ID %s: %s", s, err.Error())
+	} else {
+		ret = did
 	}
 	return
 }
