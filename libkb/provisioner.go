@@ -26,7 +26,7 @@ func (sp *SelfProvisioner) CheckProvisioned() (err error) {
 	return
 }
 
-// FindBestReprovisionKeys finds the best key to use for reprovisioning a device
+// FindBestReprovisionKey finds the best key to use for reprovisioning a device
 // if the user's config file was corrupted.  It will look at all active sibkeys,
 // and all locally stored and available secret keys, and pick one to use.
 func (sp *SelfProvisioner) FindBestReprovisionKey() (ret GenericKey, err error) {
@@ -60,4 +60,16 @@ func (sp *SelfProvisioner) FindBestReprovisionKey() (ret GenericKey, err error) 
 
 	err = NoSecretKeyError{}
 	return
+}
+
+// Reprovision fixes a corruption in the user's setup by reprovisioning this user's
+// stored private key
+func (sp *SelfProvisioner) Reprovision() (err error) {
+	var key GenericKey
+	if key, err = sp.FindBestReprovisionKey(); err != nil {
+		return
+	}
+	kid := key.GetKid()
+	G.Log.Info("Setting per-device KID to %s", kid.ToString())
+	return G.Env.GetConfigWriter().SetPerDeviceKID(kid)
 }
