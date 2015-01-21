@@ -260,6 +260,10 @@ func ParseKeyFamily(jw *jsonw.Wrapper) (ret *KeyFamily, err error) {
 	if err = jw.UnmarshalAgain(&obj); err != nil {
 		return
 	}
+
+	// Initialize this before the import step.
+	obj.pgp2kid = make(map[string]KID)
+
 	if err = obj.Import(); err != nil {
 		return
 	}
