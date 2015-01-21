@@ -177,8 +177,8 @@ var (
 	KEY_SUPERSEDED = 3
 )
 
-const (
-	DLG_NONE   = iota
-	DLG_SIBKEY = iota
-	DLG_SUBKEY = iota
+var (
+	DLG_NONE   KeyStatus = 0
+	DLG_SIBKEY KeyStatus = 1
+	DLG_SUBKEY KeyStatus = 2
 )

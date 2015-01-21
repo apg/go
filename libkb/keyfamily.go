@@ -9,6 +9,8 @@ import (
 	"time"
 )
 
+type KeyStatus int
+
 // We have two notions of time we can use -- standard UTC which might
 // be screwy (skewy) based upon local clock problems; or MerkleRoot seqno,
 // which is totally ordered and all clients and server ought to agree on it.
@@ -458,11 +460,11 @@ func (kf *KeyFamily) LocalDelegate(key GenericKey, isSibkey bool, eldest bool) (
 
 // IsKidActive computes whether the given KID is active, and if so,
 // whether it's a sib or subkey
-func (ckf ComputedKeyFamily) IsKidActive(kid KID) (ret int) {
+func (ckf ComputedKeyFamily) IsKidActive(kid KID) (ret KeyStatus) {
 	return ckf.isKidHexActive(kid.ToString())
 }
 
-func (ckf ComputedKeyFamily) isKidHexActive(hex string) (ret int) {
+func (ckf ComputedKeyFamily) isKidHexActive(hex string) (ret KeyStatus) {
 	if info, ok := ckf.cki.Infos[hex]; !ok || info.Status != KEY_LIVE {
 		ret = DLG_NONE
 	} else if info.Sibkey {
@@ -471,6 +473,20 @@ func (ckf ComputedKeyFamily) isKidHexActive(hex string) (ret int) {
 		ret = DLG_SUBKEY
 	}
 	return
+}
+
+// IsFOKIDActive computes whether this FOKID is currently active, and whether
+// as a sibkey or a subkey
+func (ckf ComputedKeyFamily) IsFOKIDActive(f FOKID) (ret KeyStatus) {
+	if f.Kid != nil {
+		return ckf.IsKidActive(f.Kid)
+	} else if f.Fp == nil {
+		return DLG_NONE
+	} else if kid, found := ckf.kf.pgp2kid[f.Fp.ToString()]; found {
+		return ckf.IsKidActive(kid)
+	} else {
+		return DLG_NONE
+	}
 }
 
 // GetAllActiveSibkeys gets all active Sibkeys from given ComputedKeyFamily,

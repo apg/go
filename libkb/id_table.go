@@ -20,11 +20,13 @@ type TypedChainLink interface {
 	ToDisplayString() string
 	IsRevocationIsh() bool
 	IsRevoked() bool
-	IsDelegation() int
+	IsDelegation() KeyStatus
 	GetSeqno() Seqno
 	GetCTime() time.Time
 	GetPgpFingerprint() *PgpFingerprint
 	GetKid() KID
+	GetFOKID() FOKID
+	IsInCurrentFamily(u *User) bool
 	GetUsername() string
 	MarkChecked(ProofError)
 	GetProofState() int
@@ -57,12 +59,12 @@ func (b *GenericChainLink) ToDebugString() string {
 		string(b.parent.uid.ToString()), b.unpacked.seqno, b.id.ToString())
 }
 
-func (g *GenericChainLink) GetDelegatedKid() KID  { return nil }
-func (g *GenericChainLink) IsRevocationIsh() bool { return false }
-func (g *GenericChainLink) IsDelegation() int     { return DLG_NONE }
-func (g *GenericChainLink) IsSibkey() bool        { return false }
-func (g *GenericChainLink) IsRevoked() bool       { return g.revoked }
-func (g *GenericChainLink) GetSeqno() Seqno       { return g.unpacked.seqno }
+func (g *GenericChainLink) GetDelegatedKid() KID    { return nil }
+func (g *GenericChainLink) IsRevocationIsh() bool   { return false }
+func (g *GenericChainLink) IsDelegation() KeyStatus { return DLG_NONE }
+func (g *GenericChainLink) IsSibkey() bool          { return false }
+func (g *GenericChainLink) IsRevoked() bool         { return g.revoked }
+func (g *GenericChainLink) GetSeqno() Seqno         { return g.unpacked.seqno }
 func (g *GenericChainLink) GetPgpFingerprint() *PgpFingerprint {
 	return g.unpacked.pgpFingerprint
 }
@@ -457,7 +459,7 @@ func ParseSibkeyChainLink(b GenericChainLink) (ret *SibkeyChainLink, err error) 
 }
 
 func (s *SibkeyChainLink) GetDelegatedKid() KID    { return s.kid }
-func (s *SibkeyChainLink) IsDelegation() int       { return DLG_SIBKEY }
+func (s *SibkeyChainLink) IsDelegation() KeyStatus { return DLG_SIBKEY }
 func (s *SibkeyChainLink) Type() string            { return "sibkey" }
 func (r *SibkeyChainLink) ToDisplayString() string { return r.kid.ToString() }
 
@@ -482,7 +484,7 @@ func ParseSubkeyChainLink(b GenericChainLink) (ret *SubkeyChainLink, err error) 
 
 func (s *SubkeyChainLink) Type() string            { return "subkey" }
 func (r *SubkeyChainLink) ToDisplayString() string { return r.kid.ToString() }
-func (s *SubkeyChainLink) IsDelegation() int       { return DLG_SUBKEY }
+func (s *SubkeyChainLink) IsDelegation() KeyStatus { return DLG_SUBKEY }
 func (s *SubkeyChainLink) GetDelegatedKid() KID    { return s.kid }
 
 //
