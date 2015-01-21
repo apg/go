@@ -206,16 +206,18 @@ func (u1 *User) TrackingProofFor(signingKey GenericKey, u2 *User) (ret *jsonw.Wr
 	return
 }
 
-func (u *User) SelfProof() (ret *jsonw.Wrapper, err error) {
-	ret, err = u.ProofMetadata(0, nil)
-	body := ret.AtKey("body")
-	body.SetKey("version", jsonw.NewInt(KEYBASE_SIGNATURE_V1))
-	body.SetKey("type", jsonw.NewString("web_service_binding"))
+func (u *User) SelfProof(signingKey GenericKey) (ret *jsonw.Wrapper, err error) {
+	ret, err = u.ProofMetadata(0, signingKey)
+	if err == nil {
+		body := ret.AtKey("body")
+		body.SetKey("version", jsonw.NewInt(KEYBASE_SIGNATURE_V1))
+		body.SetKey("type", jsonw.NewString("web_service_binding"))
+	}
 	return
 }
 
 func (u *User) ServiceProof(typ ServiceType, remotename string) (ret *jsonw.Wrapper, err error) {
-	ret, err = u.SelfProof()
+	ret, err = u.SelfProof(nil)
 	if err != nil {
 		return
 	}
