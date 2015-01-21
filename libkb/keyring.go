@@ -201,7 +201,6 @@ func (k KeyringFile) Save() error {
 
 func (k Keyrings) GetSecretKey(reason string, ui SecretUI) (key GenericKey, err error) {
 	var me *User
-	var fp *PgpFingerprint
 	var p3skb *P3SKB
 
 	G.Log.Debug("+ GetSecretKey(%s)", reason)
@@ -221,12 +220,6 @@ func (k Keyrings) GetSecretKey(reason string, ui SecretUI) (key GenericKey, err 
 		return
 	}
 
-	if fp, err = me.GetActivePgpFingerprint(); err != nil || fp == nil {
-		return
-	}
-
-	G.Log.Debug("| Active fingerprint is %s", fp.ToString())
-
 	var which string
 	if p3skb, err = me.GetSyncedSecretKey(); err != nil {
 		return
@@ -234,14 +227,16 @@ func (k Keyrings) GetSecretKey(reason string, ui SecretUI) (key GenericKey, err 
 		G.Log.Debug("| Found secret key in user object")
 		which = "your Keybase.io login"
 	} else if k.P3SKB == nil {
-		// noop
+		G.Log.Debug("| No secret keyring found")
+	} else if ckf := me.GetComputedKeyFamily(); ckf == nil {
+		G.Log.Debug("| No ComputedKeyFamily found")
 	} else {
 		G.Log.Debug("| Looking up secret key in local keychain")
-		p3skb = k.P3SKB.LookupByFingerprint(*fp)
+		p3skb = k.P3SKB.LookupWithComputedKeyFamily(ckf)
 	}
 
 	if p3skb == nil {
-		err = NoKeyError{fmt.Sprintf("No secret key found for %s", fp.ToString())}
+		err = NoKeyError{fmt.Sprintf("No secret key found")}
 	} else {
 		G.Log.Debug("| Prompt/Unlock key")
 		key, err = p3skb.PromptAndUnlock(reason, which, ui)

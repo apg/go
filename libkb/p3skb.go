@@ -194,6 +194,19 @@ func (k *P3SKBKeyringFile) Index() (err error) {
 	return
 }
 
+func (k P3SKBKeyringFile) LookupWithComputedKeyFamily(ckf *ComputedKeyFamily) *P3SKB {
+	for i := len(k.Blocks) -1; i >= 0; i-- {
+		key, err := k.Blocks[i].GetPubKey()
+		if err == nil && key != nil {
+			kid := key.GetKid()
+			if ckf.IsKidActive(kid) == DLG_SIBKEY {
+				return k.Blocks[i]
+			}
+		}
+	}	
+	return nil
+}
+
 func (k P3SKBKeyringFile) LookupByFingerprint(fp PgpFingerprint) *P3SKB {
 	ret, ok := k.fpIndex[fp]
 	if !ok {
