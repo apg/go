@@ -390,7 +390,7 @@ func (sc *SigChain) VerifySigsAndComputeKeys(ckf *ComputedKeyFamily) (cached boo
 	// the id_table.  See LoadUser in user.go and
 	// https://github.com/keybase/go/issues/43
 
-	G.Log.Debug("- VerifySigsAndComputeKeys for user %s -> %v", uid_s, (err == nil))
+	G.Log.Debug("- VerifySigsAndComputeKeys for user %s -> %v %v", uid_s, (err == nil))
 
 	return
 }
@@ -697,13 +697,23 @@ func (l *SigChainLoader) Load() (ret *SigChain, err error) {
 		return
 	}
 	stage("CheckFreshness")
-	if current, err = l.CheckFreshness(); err != nil || current {
+	if current, err = l.CheckFreshness(); err != nil {
 		return
 	}
-	stage("LoadFromServer")
-	if err = l.LoadFromServer(); err != nil {
+	if !current {
+		stage("LoadFromServer")
+		if err = l.LoadFromServer(); err != nil {
+			return
+		}
+	}
+
+	if !current {
+	} else if l.chain.GetComputedKeyInfos() == nil {
+		G.Log.Debug("| Need to reverify chain since we don't have ComputedKeyInfos")
+	} else {
 		return
 	}
+
 	stage("VerifyChain")
 	if err = l.chain.VerifyChain(); err != nil {
 		return

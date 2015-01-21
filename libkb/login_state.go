@@ -390,6 +390,8 @@ func LoginAndIdentify(arg LoginAndIdentifyArg) error {
 	u, err := LoadMe(LoadUserArg{ForceReload: true})
 	if _, not_found := err.(NoKeyError); not_found {
 		err = nil
+	} else if err != nil {
+
 	} else if u2 := G.Env.GetUid(); u2 != nil && !u2.Eq(u.id) {
 		err = UidMismatchError{fmt.Sprintf("Got wrong uid; wanted %s but got %s",
 			u.id.ToString(), u2.ToString())}

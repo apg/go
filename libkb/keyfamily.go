@@ -128,6 +128,7 @@ func (kf KeyFamily) NewComputedKeyInfos() *ComputedKeyInfos {
 
 	ret.Insert(kf.eldest, &ComputedKeyInfo{
 		Eldest: true,
+		Sibkey: true,
 		Status: KEY_LIVE,
 	})
 
@@ -145,18 +146,18 @@ func (kf KeyFamily) FindActiveSibkey(f FOKID) (key GenericKey, err error) {
 	if kid == nil && f.Fp != nil {
 		i = f.Fp.ToString()
 		if kid, found = kf.pgp2kid[i]; !found {
-			err = NoKeyError{fmt.Sprintf("No KID for PGP fingerprint %s found", i)}
+			err = KeyFamilyError{fmt.Sprintf("No KID for PGP fingerprint %s found", i)}
 			return
 		}
 	}
 	if kid == nil {
-		err = NoKeyError{"Can't lookup sibkey without a KID"}
+		err = KeyFamilyError{"Can't lookup sibkey without a KID"}
 		return
 	}
 
 	i = f.Kid.ToString()
 	if sk, ok := kf.Sibkeys[i]; !ok {
-		err = NoKeyError{fmt.Sprintf("No sibkey found for %s", i)}
+		err = KeyFamilyError{fmt.Sprintf("No sibkey found for %s", i)}
 	} else {
 		key = sk.key
 	}
@@ -302,11 +303,11 @@ func (ckf ComputedKeyFamily) FindActiveSibkey(f FOKID) (key GenericKey, err erro
 	if ki := ckf.cki.Infos[s]; ki == nil {
 		err = NoKeyError{fmt.Sprintf("The key '%s' wasn't found", s)}
 	} else if ki.Status != KEY_LIVE {
-		err = BadKeyError{fmt.Sprintf("The key '%s' is no longer active", s)}
+		err = KeyRevokedError{fmt.Sprintf("The key '%s' is no longer active", s)}
 	} else if !ki.Sibkey {
 		err = BadKeyError{fmt.Sprintf("The key '%s' wasn't delegated as a sibkey", s)}
 	} else {
-		key, err = ckf.FindActiveSibkey(f)
+		key, err = ckf.kf.FindActiveSibkey(f)
 	}
 	return
 }

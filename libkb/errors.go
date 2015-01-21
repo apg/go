@@ -647,3 +647,13 @@ func (u UidMismatchError) Error() string {
 }
 
 //=============================================================================
+
+type KeyRevokedError struct {
+	msg string
+}
+
+func (r KeyRevokedError) Error() string {
+	return fmt.Sprintf("Key revoked: %s", r.msg)
+}
+
+//=============================================================================
