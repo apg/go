@@ -553,10 +553,10 @@ func getSecretKey(jw *jsonw.Wrapper, fp PgpFingerprint) (ret *P3SKB, err error) 
 	return
 }
 
-func (u *User) GetSecretKey(fp PgpFingerprint) (ret *P3SKB, err error) {
-	G.Log.Debug("+ User.GetSecretKey(%s)", fp.ToString())
+func (u *User) GetSyncedSecretKey() (ret *P3SKB, err error) {
+	G.Log.Debug("+ User.GetSyncedSecretKey()")
 	defer func() {
-		G.Log.Debug("- User.GetSecretKey() -> %s", ErrToOk(err))
+		G.Log.Debug("- User.GetSyncedSecretKey() -> %s", ErrToOk(err))
 	}()
 
 	var jw *jsonw.Wrapper
