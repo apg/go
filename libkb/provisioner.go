@@ -12,10 +12,10 @@ func (sp *SelfProvisioner) LoadMe() (err error) {
 	return
 }
 
-// CheckProvisioned checks the current status of our client, to see if
-// it's provisioned or not, and if so, whether we have the corresponding
+// CheckProvisionedKey checks the current status of our client, to see if
+// it has a provisioned key or not, and if so, whether we have the corresponding
 // private key.
-func (sp *SelfProvisioner) CheckProvisioned() (err error) {
+func (sp *SelfProvisioner) CheckKeyProvisioned() (err error) {
 	if kid := G.Env.GetPerDeviceKID(); kid == nil {
 		err = NotProvisionedError{}
 	} else if ring := G.Keyrings.P3SKB; ring == nil {
@@ -64,7 +64,7 @@ func (sp *SelfProvisioner) FindBestReprovisionKey() (ret GenericKey, err error) 
 
 // Reprovision fixes a corruption in the user's setup by reprovisioning this user's
 // stored private key
-func (sp *SelfProvisioner) Reprovision() (err error) {
+func (sp *SelfProvisioner) ReprovisionKey() (err error) {
 	var key GenericKey
 	if key, err = sp.FindBestReprovisionKey(); err != nil {
 		return

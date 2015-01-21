@@ -37,3 +37,9 @@ func ImportDeviceId(s string) (d *DeviceId, err error) {
 	d = &ret
 	return
 }
+
+type DeviceStatus struct {
+	Provisioned  bool
+	Keyed        bool
+	KeyAvailable bool
+}

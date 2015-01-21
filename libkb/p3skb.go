@@ -195,13 +195,13 @@ func (k *P3SKBKeyringFile) Index() (err error) {
 }
 
 func (k P3SKBKeyringFile) LookupWithComputedKeyFamily(ckf *ComputedKeyFamily) *P3SKB {
-	for i := len(k.Blocks) -1; i >= 0; i-- {
+	for i := len(k.Blocks) - 1; i >= 0; i-- {
 		if key, err := k.Blocks[i].GetPubKey(); err == nil && key != nil {
 			if ckf.IsKidActive(key.GetKid()) == DLG_SIBKEY {
 				return k.Blocks[i]
 			}
 		}
-	}	
+	}
 	return nil
 }
 
