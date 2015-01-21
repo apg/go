@@ -199,13 +199,12 @@ func (k KeyringFile) Save() error {
 	return SafeWriteToFile(k)
 }
 
-func (k Keyrings) GetSecretKey(reason string, ui SecretUI) (key GenericKey, err error) {
+func (k Keyrings) GetSecretKeyLocked() (ret *P3SKB, which string, err error) {
 	var me *User
-	var p3skb *P3SKB
 
-	G.Log.Debug("+ GetSecretKey(%s)", reason)
+	G.Log.Debug("+ GetSecretKeyLocked()")
 	defer func() {
-		G.Log.Debug("- GetSecretKey() -> %s", ErrToOk(err))
+		G.Log.Debug("- GetSecretKeyLocked() -> %s", ErrToOk(err))
 	}()
 
 	G.Log.Debug("| LoadMe w/ Secrets on")
@@ -220,10 +219,9 @@ func (k Keyrings) GetSecretKey(reason string, ui SecretUI) (key GenericKey, err 
 		return
 	}
 
-	var which string
-	if p3skb, err = me.GetSyncedSecretKey(); err != nil {
+	if ret, err = me.GetSyncedSecretKey(); err != nil {
 		return
-	} else if p3skb != nil {
+	} else if ret != nil {
 		G.Log.Debug("| Found secret key in user object")
 		which = "your Keybase.io login"
 	} else if k.P3SKB == nil {
@@ -232,12 +230,23 @@ func (k Keyrings) GetSecretKey(reason string, ui SecretUI) (key GenericKey, err 
 		G.Log.Debug("| No ComputedKeyFamily found")
 	} else {
 		G.Log.Debug("| Looking up secret key in local keychain")
-		p3skb = k.P3SKB.LookupWithComputedKeyFamily(ckf)
+		ret = k.P3SKB.LookupWithComputedKeyFamily(ckf)
 	}
 
-	if p3skb == nil {
+	if ret == nil {
 		err = NoKeyError{fmt.Sprintf("No secret key found")}
-	} else {
+	}
+	return
+}
+
+func (k Keyrings) GetSecretKey(reason string, ui SecretUI) (key GenericKey, err error) {
+	G.Log.Debug("+ GetSecretKey(%s)", reason)
+	defer func() {
+		G.Log.Debug("- GetSecretKey() -> %s", ErrToOk(err))
+	}()
+	var p3skb *P3SKB
+	var which string
+	if p3skb, which, err = k.GetSecretKeyLocked(); err == nil && p3skb != nil {
 		G.Log.Debug("| Prompt/Unlock key")
 		key, err = p3skb.PromptAndUnlock(reason, which, ui)
 	}

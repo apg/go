@@ -19,15 +19,15 @@ func ClientId() *jsonw.Wrapper {
 
 func (u *User) ToTrackingStatementKey(errp *error) *jsonw.Wrapper {
 	ret := jsonw.NewDictionary()
-	if key, err := u.GetActiveKey(); err != nil {
-		*errp = fmt.Errorf("User %s doesn't have an active key: %s",
-			u.name, err.Error())
-	} else if fp, err := u.GetActivePgpFingerprint(); err != nil {
-		*errp = fmt.Errorf("User %s doesn't have an active fingerprint: %s",
-			u.name, err.Error())
+
+	if !u.HasActiveKey() {
+		*errp = fmt.Errorf("User %s doesn't have an active key")
 	} else {
-		ret.SetKey("kid", jsonw.NewString(key.GetKid().ToString()))
-		ret.SetKey("key_fingerprint", jsonw.NewString(fp.ToString()))
+		fokid := u.GetEldestFOKID()
+		ret.SetKey("kid", jsonw.NewString(fokid.Kid.ToString()))
+		if fokid.Fp != nil {
+			ret.SetKey("key_fingerprint", jsonw.NewString(fokid.Fp.ToString()))
+		}
 	}
 	return ret
 }
@@ -73,24 +73,26 @@ func (u *User) ToKeyStanza(sk GenericKey) (ret *jsonw.Wrapper, err error) {
 	ret.SetKey("username", jsonw.NewString(u.name))
 	ret.SetKey("host", jsonw.NewString(CANONICAL_HOST))
 
-	if sk == nil {
-		var key *PgpKeyBundle
-		if key, err = u.GetActiveKey(); err != nil {
-			return
-		} else {
-			sk = key
-		}
+	fokid := u.GetEldestFOKID()
+
+	var signingKid KID
+	if sk != nil {
+		signingKid = sk.GetKid()
+	} else if signingKid = G.Env.GetPerDeviceKID(); signingKid == nil {
+		err = NoSecretKeyError{}
+		return
 	}
 
-	if sk == nil {
-		err = NoKeyError{"No key found in ToKeyStanza()"}
-	} else {
+	if sk != nil {
 		if fp := sk.GetFingerprintP(); fp != nil {
 			ret.SetKey("fingerprint", jsonw.NewString(fp.ToString()))
 			ret.SetKey("key_id", jsonw.NewString(fp.ToKeyId()))
 		}
-		ret.SetKey("kid", jsonw.NewString(sk.GetKid().ToString()))
 	}
+
+	ret.SetKey("kid", jsonw.NewString(signingKid.ToString()))
+	ret.SetKey("eldest_kid", jsonw.NewString(fokid.Kid.ToString()))
+
 	return
 }
 
@@ -196,8 +198,8 @@ func (u *User) ProofMetadata(ei int, signingKey GenericKey) (ret *jsonw.Wrapper,
 	return
 }
 
-func (u1 *User) TrackingProofFor(u2 *User) (ret *jsonw.Wrapper, err error) {
-	ret, err = u1.ProofMetadata(0, nil)
+func (u1 *User) TrackingProofFor(signingKey GenericKey, u2 *User) (ret *jsonw.Wrapper, err error) {
+	ret, err = u1.ProofMetadata(0, signingKey)
 	if err == nil {
 		err = u2.ToTrackingStatement(ret.AtKey("body"))
 	}

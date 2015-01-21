@@ -603,12 +603,12 @@ func LookupMerkleLeaf(uid UID, local *User) (f *MerkleUserLeaf, err error) {
 	return
 }
 
-func (u *User) GetEldestFOKD() (ret *FOKID) {
+func (u *User) GetEldestFOKID() (ret *FOKID) {
 	return u.keyFamily.eldest
 }
 
 func (u *User) MakeIdTable() (err error) {
-	if fokid := u.GetEldestFOKD(); fokid == nil {
+	if fokid := u.GetEldestFOKID(); fokid == nil {
 		err = NoKeyError{"Expected a key but didn't find one"}
 	} else {
 		u.IdTable = NewIdentityTable(*fokid, u.sigChain, u.sigHints)
