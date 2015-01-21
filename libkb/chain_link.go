@@ -336,7 +336,7 @@ func (c *ChainLink) VerifyHash() error {
 }
 
 func (c *ChainLink) VerifyPayload() error {
-	if c.payloadVerified || c.sigVerified {
+	if c.payloadVerified {
 		return nil
 	}
 
@@ -388,6 +388,10 @@ func (c *ChainLink) VerifySigWithKeyFamily(ckf ComputedKeyFamily) (cached bool, 
 	var sigId *SigId
 
 	if key, err = ckf.FindActiveSibkey(c.ToFOKID()); err != nil {
+		return
+	}
+
+	if err = c.VerifyLink(); err != nil {
 		return
 	}
 
@@ -476,8 +480,9 @@ func (l *ChainLink) VerifyLink() error {
 }
 
 func (l *ChainLink) Store() (didStore bool, err error) {
+
 	if l.storedLocally && !l.dirty {
-		didStore = true
+		didStore = false
 		return
 	}
 

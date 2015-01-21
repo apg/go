@@ -49,7 +49,7 @@ type ServerKeyRecord struct {
 	key GenericKey `json:-`
 }
 
-type KeyMap map[string]ServerKeyRecord
+type KeyMap map[string]*ServerKeyRecord
 
 // When we play a sigchain forward, it yields ComputedKeyInfos (CKIs). We're going to
 // store CKIs separately from the keys, since the server can clobber the
@@ -155,7 +155,7 @@ func (kf KeyFamily) FindActiveSibkey(f FOKID) (key GenericKey, err error) {
 		return
 	}
 
-	i = f.Kid.ToString()
+	i = kid.ToString()
 	if sk, ok := kf.Sibkeys[i]; !ok {
 		err = KeyFamilyError{fmt.Sprintf("No sibkey found for %s", i)}
 	} else {
@@ -188,9 +188,11 @@ func (kf *KeyFamily) Import() (err error) {
 	defer func() {
 		G.Log.Debug("- ImportKeys -> %s", ErrToOk(err))
 	}()
+	fmt.Printf("w.... %+v\n", kf.Sibkeys)
 	if kf.pgps, err = kf.Sibkeys.Import(kf.pgps); err != nil {
 		return
 	}
+	fmt.Printf("x.... %+v\n", kf.Sibkeys)
 	if kf.pgps, err = kf.Subkeys.Import(kf.pgps); err != nil {
 		return
 	}
@@ -443,7 +445,7 @@ func (kf *KeyFamily) LocalDelegate(key GenericKey, isSibkey bool, eldest bool) (
 		kf.pgps = append(kf.pgps, pgp)
 	}
 	kid_s := key.GetKid().ToString()
-	skr := ServerKeyRecord{key: key}
+	skr := &ServerKeyRecord{key: key}
 	if isSibkey {
 		kf.Sibkeys[kid_s] = skr
 	} else {

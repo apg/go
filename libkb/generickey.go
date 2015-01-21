@@ -29,9 +29,13 @@ func (k KID) ToString() string {
 	return hex.EncodeToString(k)
 }
 
+func (k KID) IsValid() bool {
+	return k != nil && len(k) > 0
+}
+
 func ImportKID(s string) (ret KID, err error) {
 	var tmp []byte
-	if tmp, err = hex.DecodeString(s); err == nil {
+	if tmp, err = hex.DecodeString(s); err == nil && len(tmp) > 0 {
 		ret = KID(tmp)
 	}
 	return
@@ -39,7 +43,7 @@ func ImportKID(s string) (ret KID, err error) {
 
 func GetKID(w *jsonw.Wrapper) (kid KID, err error) {
 	var s string
-	if s, err = w.GetString(); err == nil {
+	if s, err = w.GetString(); err == nil && len(s) > 0 {
 		kid, err = ImportKID(s)
 	}
 	return
