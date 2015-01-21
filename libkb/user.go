@@ -313,30 +313,10 @@ func (u User) GetActivePgpKeys(sibkey bool) (ret []*PgpKeyBundle) {
 // GetActivePgpKeys looks into the user's ComputedKeyFamily and
 // returns only the fingerprint of the active PGP keys.
 // If you want only sibkeys, then // specify sibkey=true.
-func (u User) GetActivePgpKeyFingerprints(sibkey bool) (ret []PgpFingerprint) {
+func (u User) GetActivePgpFingerprints(sibkey bool) (ret []PgpFingerprint) {
 	for _, pgp := range u.GetActivePgpKeys(sibkey) {
 		ret = append(ret, pgp.GetFingerprint())
 	}
-	return
-}
-
-func (u *User) GetActivePgpFingerprint() (f *PgpFingerprint, err error) {
-
-	if u.activePgpFingerprint != nil {
-		return u.activePgpFingerprint, nil
-	}
-	var key *PgpKeyBundle
-	key, err = u.GetActiveKey()
-	if err != nil {
-		return
-	}
-	if key == nil {
-		return
-	}
-
-	fp := key.GetFingerprint()
-	f = &fp
-	u.activePgpFingerprint = f
 	return
 }
 
@@ -366,38 +346,6 @@ func (u *User) SetActiveKey(pgp *PgpKeyBundle) (err error) {
 
 	u.dirty = true
 	return nil
-}
-
-func (u *User) GetActiveKey() (pgp *PgpKeyBundle, err error) {
-
-	G.Log.Debug("+ GetActiveKey() for %s", u.name)
-	defer func() {
-		var s string
-		if pgp != nil {
-			s = pgp.GetFingerprint().ToString()
-		} else {
-			s = "<none>"
-		}
-		G.Log.Debug("- GetActiveKey() -> %s,%s", s, ErrToOk(err))
-	}()
-
-	if pgp = u.activeKey; pgp != nil {
-		return
-	}
-
-	w := u.publicKeys.AtKey("primary").AtKey("bundle")
-	if w.IsNil() {
-		return
-	}
-
-	pgp, err = GetOneKey(w)
-
-	if err != nil {
-		return
-	}
-
-	u.activeKey = pgp
-	return
 }
 
 func LoadUserFromServer(arg LoadUserArg, body *jsonw.Wrapper) (u *User, err error) {
@@ -833,7 +781,7 @@ func (u User) ToOkProofSet() *ProofSet {
 		{Key: "keybase", Value: u.name},
 		{Key: "uid", Value: u.id.ToString()},
 	}
-	if fp, err := u.GetActivePgpFingerprint(); err != nil {
+	for _, fp := range u.GetActivePgpFingerprints(true) {
 		proofs = append(proofs, Proof{Key: "fingerprint", Value: fp.ToString()})
 	}
 	if u.IdTable != nil {

@@ -223,6 +223,13 @@ func (u NoKeyError) Error() string {
 	}
 }
 
+type NoEldestKeyError struct {
+}
+
+func (e NoEldestKeyError) Error() string {
+	return "No Eldest key found"
+}
+
 //=============================================================================
 
 type NoSecretKeyError struct {
@@ -260,7 +267,11 @@ type KeyExistsError struct {
 }
 
 func (k KeyExistsError) Error() string {
-	return fmt.Sprintf("Key already exists for user (%s)", k.key.ToString())
+	ret := "Key already exists for user"
+	if k.key != nil {
+		fmt.Sprintf("%s (%s)", ret, k.key.ToString())
+	}
+	return ret
 }
 
 //=============================================================================
@@ -626,4 +637,13 @@ func (e NotProvisionedError) Error() string {
 }
 
 //=============================================================================
+
+type UidMismatchError struct {
+	msg string
+}
+
+func (u UidMismatchError) Error() string {
+	return fmt.Sprintf("UID mismatch error: %s", u.msg)
+}
+
 //=============================================================================

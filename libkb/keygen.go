@@ -160,11 +160,10 @@ type KeyGen struct {
 }
 
 func (s *KeyGen) CheckNoKey() error {
-	fp, err := s.me.GetActivePgpFingerprint()
-	if err == nil && fp != nil {
-		err = KeyExistsError{fp}
+	if s.me.HasActiveKey() {
+		return KeyExistsError{}
 	}
-	return err
+	return nil
 }
 
 func (s *KeyGen) LoadMe() (err error) {
