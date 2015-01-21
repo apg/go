@@ -25,7 +25,7 @@ type ComputedKeyInfo struct {
 	Status      int
 	Eldest      bool
 	Sibkey      bool
-	Delegations map[SigId]KID
+	Delegations map[string]KID
 	DelegatedAt *KeybaseTime
 	RevokedAt   *KeybaseTime
 }
@@ -62,7 +62,7 @@ type ComputedKeyInfos struct {
 
 	// Map of a SigId (in Binary) to the ComputedKeyInfo describing when the key was
 	// delegated.
-	Sigs map[SigId]*ComputedKeyInfo
+	Sigs map[string]*ComputedKeyInfo
 }
 
 // As returned by user/lookup.json
@@ -82,7 +82,7 @@ type ComputedKeyFamily struct {
 
 func (cki ComputedKeyInfo) Copy() ComputedKeyInfo {
 	ret := cki
-	ret.Delegations = make(map[SigId]KID)
+	ret.Delegations = make(map[string]KID)
 	for k, v := range cki.Delegations {
 		ret.Delegations[k] = v
 	}
@@ -105,7 +105,7 @@ func (cki ComputedKeyInfos) Copy() *ComputedKeyInfos {
 	ret := &ComputedKeyInfos{
 		dirty: cki.dirty,
 		Infos: make(map[string]*ComputedKeyInfo),
-		Sigs:  make(map[SigId]*ComputedKeyInfo),
+		Sigs:  make(map[string]*ComputedKeyInfo),
 	}
 	for k, v := range cki.Infos {
 		ret.Infos[k] = v
@@ -188,11 +188,9 @@ func (kf *KeyFamily) Import() (err error) {
 	defer func() {
 		G.Log.Debug("- ImportKeys -> %s", ErrToOk(err))
 	}()
-	fmt.Printf("w.... %+v\n", kf.Sibkeys)
 	if kf.pgps, err = kf.Sibkeys.Import(kf.pgps); err != nil {
 		return
 	}
-	fmt.Printf("x.... %+v\n", kf.Sibkeys)
 	if kf.pgps, err = kf.Subkeys.Import(kf.pgps); err != nil {
 		return
 	}
@@ -352,16 +350,16 @@ func (cki *ComputedKeyInfos) Delegate(kid_s string, tm *KeybaseTime, sigid SigId
 		info = &ComputedKeyInfo{
 			Eldest:      false,
 			Status:      KEY_LIVE,
-			Delegations: make(map[SigId]KID),
+			Delegations: make(map[string]KID),
 			DelegatedAt: tm,
 		}
 		cki.Infos[kid_s] = info
 	} else {
 		info.Status = KEY_LIVE
 	}
-	info.Delegations[sigid] = signingKid
+	info.Delegations[sigid.ToString(true)] = signingKid
 	info.Sibkey = isSibkey
-	cki.Sigs[sigid] = info
+	cki.Sigs[sigid.ToString(true)] = info
 	return
 }
 
@@ -396,8 +394,8 @@ func (ckf *ComputedKeyFamily) RevokeKids(kids []KID, tcl TypedChainLink) (err er
 }
 
 func (ckf *ComputedKeyFamily) RevokeSig(sig SigId, tcl TypedChainLink) (err error) {
-	if info, found := ckf.cki.Sigs[sig]; !found {
-	} else if _, found = info.Delegations[sig]; !found {
+	if info, found := ckf.cki.Sigs[sig.ToString(true)]; !found {
+	} else if _, found = info.Delegations[sig.ToString(true)]; !found {
 		err = BadRevocationError{fmt.Sprintf("Can't find sigId %s in delegation list",
 			sig.ToString(true))}
 	} else {

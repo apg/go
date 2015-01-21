@@ -482,7 +482,7 @@ func (l *SigChainLoader) LoadLinksFromStorage() (err error) {
 	// allKeys. We have to load something...  Note that we don't use l.fp
 	// here (as we used to) since if the user used to have chainlinks, and then
 	// removed their key, we still want to load their last chainlinks.
-	var loadFp *PgpFingerprint
+	var loadFokid *FOKID
 
 	curr = ls.id
 	var link *ChainLink
@@ -492,14 +492,18 @@ func (l *SigChainLoader) LoadLinksFromStorage() (err error) {
 		if link, err = ImportLinkFromStorage(curr); err != nil {
 			return
 		}
-		fp2 := link.GetPgpFingerprint()
-		if loadFp == nil {
-			loadFp = fp2
-			G.Log.Debug("| Setting loadFp=%s", fp2.ToString())
-		} else if !l.allKeys && loadFp != nil && !loadFp.Eq(*fp2) {
+		fokid2 := link.ToEldestFOKID()
+
+		if loadFokid == nil {
+			loadFokid = &fokid2
+			G.Log.Debug("| Setting loadFokid=%s", fokid2.ToString())
+		} else if !l.allKeys && loadFokid != nil && !loadFokid.Eq(fokid2) {
 			good_key = false
-			G.Log.Debug("| Stop loading at fp=%s (!= fp=%s)", loadFp.ToString(), fp2.ToString())
-		} else {
+			G.Log.Debug("| Stop loading at FOKID=%s (!= FOKID=%s)",
+				loadFokid.ToString(), fokid2.ToString())
+		}
+
+		if good_key {
 			links = append(links, link)
 			curr = link.GetPrev()
 		}

@@ -259,7 +259,7 @@ func (c *ChainLink) UnpackComputedKeyInfos(jw *jsonw.Wrapper) (err error) {
 	if jw == nil || jw.IsNil() {
 		return
 	}
-	if err = jw.UnmarshalAgain(&tmp); err != nil {
+	if err = jw.UnmarshalAgain(&tmp); err == nil {
 		c.cki = &tmp
 	}
 	return
@@ -295,7 +295,9 @@ func (c *ChainLink) Unpack(trusted bool) (err error) {
 		if e2 == nil && b {
 			c.sigVerified = true
 			G.Log.Debug("| Link is marked as 'sig_verified'")
-			c.UnpackComputedKeyInfos(c.packed.AtKey("cached_cki"))
+			if e3 := c.UnpackComputedKeyInfos(c.packed.AtKey("computed_key_infos")); e3 != nil {
+				G.Log.Warning("Problem unpacking computed key infos: %s\n", e3.Error())
+			}
 		}
 	}
 
