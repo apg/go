@@ -536,19 +536,15 @@ func (u *User) StoreTopLevel() error {
 	return err
 }
 
-func getSecretKey(jw *jsonw.Wrapper, fp PgpFingerprint) (ret *P3SKB, err error) {
+func getSecretKey(jw *jsonw.Wrapper, ckf *ComputedKeyFamily) (ret *P3SKB, err error) {
 	var packet *KeybasePacket
 	var key GenericKey
 
 	if packet, err = GetPacket(jw.AtKey("bundle")); err != nil {
 	} else if ret, err = packet.ToP3SKB(); err != nil {
 	} else if key, err = ret.GetPubKey(); err != nil {
-	} else if fp2 := key.GetFingerprintP(); fp2 == nil {
+	} else if ckf.IsKidActive(key.GetKid()) != DLG_SIBKEY {
 		ret = nil
-		err = NoKeyError{"No PGP key found"}
-	} else if !fp2.Eq(fp) {
-		ret = nil
-		err = WrongKeyError{&fp, fp2}
 	}
 	return
 }
@@ -559,19 +555,25 @@ func (u *User) GetSyncedSecretKey() (ret *P3SKB, err error) {
 		G.Log.Debug("- User.GetSyncedSecretKey() -> %s", ErrToOk(err))
 	}()
 
-	var jw *jsonw.Wrapper
-	if u.privateKeys != nil {
-		jw = u.privateKeys.AtKey("primary")
-		if jw.IsNil() {
-			jw = nil
-		}
-	}
-	if jw == nil {
+	l, e := u.privateKeys.Len()
+	if e != nil || l == 0 {
 		G.Log.Debug("| short-circuit; no privateKeys object found")
 		return
 	}
 
-	ret, err = getSecretKey(jw, fp)
+	ckf := u.GetComputedKeyFamily()
+	if ckf == nil {
+		G.Log.Debug("| short-circuit; no Computed key family")
+		return
+	}
+
+	for i := 0; i < l; i++ {
+		if ret, e = getSecretKey(u.privateKeys.AtIndex(i), ckf); ret != nil && e == nil {
+			return
+		}
+	}
+
+	err = NoKeyError{"No synchronized public key"}
 	return
 }
 

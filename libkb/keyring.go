@@ -228,7 +228,7 @@ func (k Keyrings) GetSecretKey(reason string, ui SecretUI) (key GenericKey, err 
 	G.Log.Debug("| Active fingerprint is %s", fp.ToString())
 
 	var which string
-	if p3skb, err = me.GetSecretKey(*fp); err != nil {
+	if p3skb, err = me.GetSyncedSecretKey(); err != nil {
 		return
 	} else if p3skb != nil {
 		G.Log.Debug("| Found secret key in user object")
