@@ -82,12 +82,19 @@ func importNaclKid(kid KID, typ byte, bodyLen int) (ret []byte, err error) {
 	return
 }
 
-func ImportNaclSigningKeyPairFromBytes(raw []byte) (ret NaclSigningKeyPair, err error) {
+func ImportNaclSigningKeyPairFromBytes(pub []byte, priv []byte) (ret NaclSigningKeyPair, err error) {
 	var body []byte
-	if body, err = importNaclKid(KID(raw), byte(KID_NACL_EDDSA), ed25519.PublicKeySize); err != nil {
+	if body, err = importNaclKid(KID(pub), byte(KID_NACL_EDDSA), ed25519.PublicKeySize); err != nil {
 		return
 	}
 	copy(ret.Public[:], body)
+	if priv == nil {
+	} else if len(priv) != ed25519.PrivateKeySize {
+		err = BadKeyError{"Secret key was wrong size"}
+	} else {
+		ret.Private = &NaclSigningKeyPrivate{}
+		copy(ret.Private[:], priv)
+	}
 	return
 }
 
@@ -100,12 +107,19 @@ func ImportNaclSigningKeyPairFromHex(s string) (ret NaclSigningKeyPair, err erro
 	return
 }
 
-func ImportNaclDHKeyPairFromBytes(raw []byte) (ret NaclDHKeyPair, err error) {
+func ImportNaclDHKeyPairFromBytes(pub []byte, priv []byte) (ret NaclDHKeyPair, err error) {
 	var body []byte
-	if body, err = importNaclKid(KID(raw), byte(KID_NACL_DH), NACL_DH_KEYSIZE); err != nil {
+	if body, err = importNaclKid(KID(pub), byte(KID_NACL_DH), NACL_DH_KEYSIZE); err != nil {
 		return
 	}
 	copy(ret.Public[:], body)
+	if priv == nil {
+	} else if len(priv) != NACL_DH_KEYSIZE {
+		err = BadKeyError{"Secret key was wrong size"}
+	} else {
+		ret.Private = &NaclDHKeyPrivate{}
+		copy(ret.Private[:], priv)
+	}
 	return
 }
 

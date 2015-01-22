@@ -1,6 +1,7 @@
 package libkb
 
 import (
+	"fmt"
 	"github.com/keybase/go-jsonw"
 )
 
@@ -63,6 +64,8 @@ func PostProof(arg PostProofArg) (*PostProofRes, error) {
 		"type":            S{arg.ProofType},
 	}
 	hargs.Add(arg.RemoteKey, S{arg.RemoteUsername})
+
+	fmt.Printf("posting %+v\n", hargs)
 
 	res, err := G.API.Post(ApiArg{
 		Endpoint:    "sig/post",

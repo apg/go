@@ -76,9 +76,9 @@ func (p *P3SKB) ReadKey(priv bool) (g GenericKey, err error) {
 	case IsPgpAlgo(p.Type):
 		g, err = ReadOneKeyFromBytes(p.Pub)
 	case p.Type == KID_NACL_EDDSA:
-		g, err = ImportNaclSigningKeyPairFromBytes(p.Pub)
+		g, err = ImportNaclSigningKeyPairFromBytes(p.Pub, nil)
 	case p.Type == KID_NACL_DH:
-		g, err = ImportNaclDHKeyPairFromBytes(p.Pub)
+		g, err = ImportNaclDHKeyPairFromBytes(p.Pub, nil)
 	default:
 	}
 	return
@@ -116,8 +116,13 @@ func (p *P3SKB) UnlockSecretKey(tsec *triplesec.Cipher) (key GenericKey, err err
 		return
 	}
 
-	if key, err = ReadOneKeyFromBytes(unlocked); err != nil {
-		return
+	switch {
+	case IsPgpAlgo(p.Type):
+		key, err = ReadOneKeyFromBytes(unlocked)
+	case p.Type == KID_NACL_EDDSA:
+		key, err = ImportNaclSigningKeyPairFromBytes(p.Pub, unlocked)
+	case p.Type == KID_NACL_DH:
+		key, err = ImportNaclDHKeyPairFromBytes(p.Pub, unlocked)
 	}
 
 	if err = key.CheckSecretKey(); err == nil {
