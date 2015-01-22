@@ -148,7 +148,16 @@ func OpenSig(armored string) (ps *ParsedSig, err error) {
 	return
 }
 
-func SigAssertPayload(armored string, expected []byte) (ps *ParsedSig, err error) {
+func SigAssertPayload(armored string, expected []byte) (sigId *SigId, err error) {
+	if strings.HasPrefix(armored, "-----BEGIN PGP") {
+		return SigAssertPgpPayload(armored, expected)
+	} else {
+		return SigAssertKbPayload(armored, expected)
+	}
+}
+
+func SigAssertPgpPayload(armored string, expected []byte) (sigId *SigId, err error) {
+	var ps *ParsedSig
 	ps, err = OpenSig(armored)
 	if err != nil {
 		return
@@ -157,6 +166,8 @@ func SigAssertPayload(armored string, expected []byte) (ps *ParsedSig, err error
 		ps = nil
 		return
 	}
+	tmp := ps.ID()
+	sigId = &tmp
 	return
 }
 

@@ -130,7 +130,9 @@ func (c *ChainLink) Pack() error {
 	p.SetKey("payload_json", jsonw.NewString(c.unpacked.payloadJsonStr))
 	p.SetKey("sig", jsonw.NewString(c.unpacked.sig))
 	p.SetKey("sig_id", jsonw.NewString(c.unpacked.sigId.ToString(true)))
-	p.SetKey("fingerprint", jsonw.NewString(c.unpacked.pgpFingerprint.ToString()))
+	if c.unpacked.pgpFingerprint != nil {
+		p.SetKey("fingerprint", jsonw.NewString(c.unpacked.pgpFingerprint.ToString()))
+	}
 	p.SetKey("sig_verified", jsonw.NewBool(c.sigVerified))
 
 	if c.cki != nil {
@@ -342,13 +344,12 @@ func (c *ChainLink) VerifyPayload() error {
 		return nil
 	}
 
-	ps, err := SigAssertPayload(c.unpacked.sig, []byte(c.unpacked.payloadJsonStr))
+	sigid, err := SigAssertPayload(c.unpacked.sig, []byte(c.unpacked.payloadJsonStr))
 	if err != nil {
 		return err
 	}
 
-	c.unpacked.sigId = ps.ID()
-
+	c.unpacked.sigId = *sigid
 	c.payloadVerified = true
 	return nil
 }

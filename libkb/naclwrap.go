@@ -185,7 +185,7 @@ func (k NaclSigningKeyPair) Sign(msg []byte) (ret *NaclSig, err error) {
 		HashType: HASH_PGP_SHA512,
 		Payload:  msg,
 		Kid:      k.GetKid(),
-		Detached: true,
+		Detached: false,
 	}
 	copy(ret.Sig[:], (*sig)[:])
 	return
@@ -247,8 +247,12 @@ func (k NaclSigningKeyPair) Verify(armored string, expected []byte) (sigId *SigI
 	var packet *KeybasePacket
 	var sig *NaclSig
 	var ok bool
+	var byt []byte
 
-	if packet, err = DecodeArmoredPacket(armored); err != nil {
+	if byt, err = base64.StdEncoding.DecodeString(armored); err != nil {
+		return
+	}
+	if packet, err = DecodePacket(byt); err != nil {
 		return
 	}
 	if sig, ok = packet.Body.(*NaclSig); !ok {
@@ -266,6 +270,8 @@ func (k NaclSigningKeyPair) Verify(armored string, expected []byte) (sigId *SigI
 		err = BadSigError{"wrong payload"}
 		return
 	}
+	id := ComputeSigIdFromSigBody(byt)
+	sigId = &id
 	return
 }
 
@@ -320,4 +326,31 @@ func GenerateNaclDHKeyPair() (NaclKeyPair, error) {
 	copy(npriv[:], priv[:])
 	ret.Private = &npriv
 	return ret, nil
+}
+
+func SigAssertKbPayload(armored string, expected []byte) (sigId *SigId, err error) {
+	var byt []byte
+	var packet *KeybasePacket
+	var sig *NaclSig
+	var ok bool
+
+	fmt.Printf("fuuuuck ... %s\n", armored)
+
+	if byt, err = base64.StdEncoding.DecodeString(armored); err != nil {
+		fmt.Printf("man down!\n")
+		return
+	}
+	if packet, err = DecodePacket(byt); err != nil {
+		return
+	}
+	if sig, ok = packet.Body.(*NaclSig); !ok {
+		err = UnmarshalError{"NaCl Signature"}
+		return
+	}
+	if !FastByteArrayEq(expected, sig.Payload) {
+		err = BadSigError{"wrong payload"}
+	}
+	id := ComputeSigIdFromSigBody(byt)
+	sigId = &id
+	return
 }

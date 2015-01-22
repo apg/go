@@ -370,6 +370,7 @@ func (s *KeyGen) GenNacl() (err error) {
 			LogUI:     s.arg.LogUI,
 		})
 		err = gen.Run()
+		signer = gen.GetKeyPair()
 	}
 
 	if err != nil || s.arg.NoNaclDh {
