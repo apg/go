@@ -22,10 +22,13 @@ type KeybaseTime struct {
 }
 
 type ComputedKeyInfo struct {
-	Status      int
-	Eldest      bool
-	Sibkey      bool
-	Delegations map[string]KID
+	Status int
+	Eldest bool
+	Sibkey bool
+
+	// Map of SigId -> KID, both as hex strings
+	// (since we can't unmarhsal into KIDs)
+	Delegations map[string]string
 	DelegatedAt *KeybaseTime
 	RevokedAt   *KeybaseTime
 }
@@ -82,7 +85,7 @@ type ComputedKeyFamily struct {
 
 func (cki ComputedKeyInfo) Copy() ComputedKeyInfo {
 	ret := cki
-	ret.Delegations = make(map[string]KID)
+	ret.Delegations = make(map[string]string)
 	for k, v := range cki.Delegations {
 		ret.Delegations[k] = v
 	}
@@ -351,14 +354,14 @@ func (cki *ComputedKeyInfos) Delegate(kid_s string, tm *KeybaseTime, sigid SigId
 		info = &ComputedKeyInfo{
 			Eldest:      false,
 			Status:      KEY_LIVE,
-			Delegations: make(map[string]KID),
+			Delegations: make(map[string]string),
 			DelegatedAt: tm,
 		}
 		cki.Infos[kid_s] = info
 	} else {
 		info.Status = KEY_LIVE
 	}
-	info.Delegations[sigid.ToString(true)] = signingKid
+	info.Delegations[sigid.ToString(true)] = signingKid.ToString()
 	info.Sibkey = isSibkey
 	cki.Sigs[sigid.ToString(true)] = info
 	return
@@ -565,7 +568,7 @@ func (ckf ComputedKeyFamily) DumpToLog(ui LogUI) {
 			ui.Info(" • Status=%d; Sibkey=%v; Eldest=%v",
 				info.Status, info.Sibkey, info.Eldest)
 			for k, v := range info.Delegations {
-				ui.Info(" • Delegation by KID=%s in Sig=%s", v.ToString(), k)
+				ui.Info(" • Delegation by KID=%s in Sig=%s", v, k)
 			}
 		}
 	}
