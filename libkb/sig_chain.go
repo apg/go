@@ -179,9 +179,7 @@ func (sc *SigChain) LoadFromServer(t *MerkleTriple) (dirtyTail *LinkSummary, err
 }
 
 func (sc *SigChain) VerifyChain() error {
-	fmt.Printf("x 1\n")
 	for i := len(sc.chainLinks) - 1; i >= 0; i-- {
-		fmt.Printf("x 1 %d\n", i)
 		curr := sc.chainLinks[i]
 		if curr.chainVerified {
 			break

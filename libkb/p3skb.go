@@ -11,7 +11,6 @@ import (
 	"fmt"
 	"github.com/keybase/go-triplesec"
 	"golang.org/x/crypto/openpgp"
-	"golang.org/x/crypto/openpgp/packet"
 	"io"
 	"os"
 )
@@ -73,10 +72,13 @@ func (p *P3SKB) ToPacket() (ret *KeybasePacket, err error) {
 }
 
 func (p *P3SKB) ReadKey(priv bool) (g GenericKey, err error) {
-	switch packet.PublicKeyAlgorithm(p.Type) {
-	case packet.PubKeyAlgoRSA, packet.PubKeyAlgoRSAEncryptOnly,
-		packet.PubKeyAlgoRSASignOnly, packet.PubKeyAlgoDSA, packet.PubKeyAlgoECDSA:
+	switch {
+	case IsPgpAlgo(p.Type):
 		g, err = ReadOneKeyFromBytes(p.Pub)
+	case p.Type == KID_NACL_EDDSA:
+		g, err = ImportNaclSigningKeyPairFromBytes(p.Pub)
+	case p.Type == KID_NACL_DH:
+		g, err = ImportNaclDHKeyPairFromBytes(p.Pub)
 	default:
 	}
 	return
@@ -208,6 +210,7 @@ func (k P3SKBKeyringFile) LookupWithComputedKeyFamily(ckf *ComputedKeyFamily) *P
 	}()
 	G.Log.Debug("| Checking %d possible blocks", len(k.Blocks))
 	for i := len(k.Blocks) - 1; i >= 0; i-- {
+		G.Log.Debug("| trying key index# -> %d", i)
 		if key, err := k.Blocks[i].GetPubKey(); err == nil && key != nil {
 			kid = key.GetKid()
 			active := ckf.IsKidActive(kid)
@@ -215,6 +218,8 @@ func (k P3SKBKeyringFile) LookupWithComputedKeyFamily(ckf *ComputedKeyFamily) *P
 			if active == DLG_SIBKEY {
 				return k.Blocks[i]
 			}
+		} else {
+			G.Log.Debug("| failed --> %v", err)
 		}
 	}
 	return nil

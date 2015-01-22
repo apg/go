@@ -283,9 +283,9 @@ func (skr *ServerKeyRecord) Import() (pgp *PgpKeyBundle, err error) {
 			skr.key = pgp
 		}
 	case skr.KeyAlgo == KID_NACL_EDDSA:
-		skr.key, err = ImportNaclSigningKeyPair(skr.Bundle)
+		skr.key, err = ImportNaclSigningKeyPairFromHex(skr.Bundle)
 	case skr.KeyAlgo == KID_NACL_DH:
-		skr.key, err = ImportNaclDHKeyPair(skr.Bundle)
+		skr.key, err = ImportNaclDHKeyPairFromHex(skr.Bundle)
 	default:
 		err = BadKeyError{fmt.Sprintf("algo=%d is unknown", skr.KeyAlgo)}
 	}

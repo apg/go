@@ -1,6 +1,7 @@
 package libkb
 
 import (
+	"encoding/base64"
 	"encoding/hex"
 	"github.com/keybase/go-jsonw"
 	"github.com/keybase/go-triplesec"
@@ -23,6 +24,10 @@ type GenericKey interface {
 
 func (k KID) ToMapKey() string {
 	return k.ToString()
+}
+
+func (k KID) ToShortIdString() string {
+	return base64.StdEncoding.EncodeToString(k[0:12])
 }
 
 func (k KID) ToString() string {
