@@ -40,7 +40,9 @@ func (sc *SigChain) LocalDelegate(kf *KeyFamily, key GenericKey, sigId *SigId, s
 	if cki == nil {
 		cki = kf.NewComputedKeyInfos()
 	}
-	l.cki = cki
+
+	// Update the current state
+	sc.localCki = cki
 
 	if sigId != nil {
 		err = cki.Delegate(key.GetKid().ToString(), NowAsKeybaseTime(0), *sigId, signingKid, isSibkey)

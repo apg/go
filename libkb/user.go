@@ -561,7 +561,7 @@ func (u *User) MakeIdTable() (err error) {
 	} else {
 		u.IdTable = NewIdentityTable(*fokid, u.sigChain, u.sigHints)
 	}
-	return nil
+	return
 }
 
 func LoadMe(arg LoadUserArg) (ret *User, err error) {
@@ -732,6 +732,7 @@ func (u User) HasActiveKey() bool {
 	if ckf := u.GetComputedKeyFamily(); ckf == nil {
 		return false
 	} else {
+		fmt.Printf("Got computed key family in HasActiveKey....%+v\n", ckf)
 		return ckf.HasActiveKey()
 	}
 }

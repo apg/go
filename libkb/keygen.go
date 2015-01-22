@@ -190,7 +190,9 @@ func (s *KeyGen) GeneratePost() (err error) {
 	var sig string
 	var sigid *SigId
 
-	if jw, err = s.me.SelfProof(s.bundle); err != nil {
+	fokid := GenericKeyToFOKID(s.bundle)
+
+	if jw, err = s.me.SelfProof(s.bundle, &fokid); err != nil {
 		return
 	}
 	if sig, sigid, s.chainTail.linkId, err = SignJson(jw, s.bundle); err != nil {

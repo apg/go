@@ -515,8 +515,15 @@ func (ckf ComputedKeyFamily) GetAllActiveSibkeysKIDs() (ret []KID) {
 }
 
 // HasActiveKey returns if the given ComputeKeyFamily has any active keys.
+// The key has to be in the server-given KeyFamily and also in our ComputedKeyFamily.
+// The former check is so that we can handle the case nuked sigchains.
 func (ckf ComputedKeyFamily) HasActiveKey() bool {
-	return ckf.cki.HasActiveKey()
+	for k, _ := range ckf.kf.Sibkeys {
+		if ckf.isKidHexActive(k) == DLG_SIBKEY {
+			return true
+		}
+	}
+	return false
 }
 
 // HasActiveKey returns if the given ComputeKeyInfos has any active keys.

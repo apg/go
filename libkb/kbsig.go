@@ -67,13 +67,15 @@ func (u *User) ToTrackingStatement(w *jsonw.Wrapper) (err error) {
 	return
 }
 
-func (u *User) ToKeyStanza(sk GenericKey) (ret *jsonw.Wrapper, err error) {
+func (u *User) ToKeyStanza(sk GenericKey, eldest *FOKID) (ret *jsonw.Wrapper, err error) {
 	ret = jsonw.NewDictionary()
 	ret.SetKey("uid", jsonw.NewString(u.id.ToString()))
 	ret.SetKey("username", jsonw.NewString(u.name))
 	ret.SetKey("host", jsonw.NewString(CANONICAL_HOST))
 
-	fokid := u.GetEldestFOKID()
+	if eldest == nil {
+		eldest = u.GetEldestFOKID()
+	}
 
 	var signingKid KID
 	if sk != nil {
@@ -91,7 +93,9 @@ func (u *User) ToKeyStanza(sk GenericKey) (ret *jsonw.Wrapper, err error) {
 	}
 
 	ret.SetKey("kid", jsonw.NewString(signingKid.ToString()))
-	ret.SetKey("eldest_kid", jsonw.NewString(fokid.Kid.ToString()))
+	if eldest != nil {
+		ret.SetKey("eldest_kid", jsonw.NewString(eldest.Kid.ToString()))
+	}
 
 	return
 }
@@ -158,7 +162,7 @@ func remoteProofToTrackingStatement(s RemoteProofChainLink, base *jsonw.Wrapper)
 	return nil
 }
 
-func (u *User) ProofMetadata(ei int, signingKey GenericKey) (ret *jsonw.Wrapper, err error) {
+func (u *User) ProofMetadata(ei int, signingKey GenericKey, eldest *FOKID) (ret *jsonw.Wrapper, err error) {
 
 	var seqno int
 	var prev_s string
@@ -187,7 +191,7 @@ func (u *User) ProofMetadata(ei int, signingKey GenericKey) (ret *jsonw.Wrapper,
 	ret.SetKey("prev", prev)
 
 	body := jsonw.NewDictionary()
-	key, err = u.ToKeyStanza(signingKey)
+	key, err = u.ToKeyStanza(signingKey, eldest)
 	if err != nil {
 		ret = nil
 		return
@@ -199,15 +203,15 @@ func (u *User) ProofMetadata(ei int, signingKey GenericKey) (ret *jsonw.Wrapper,
 }
 
 func (u1 *User) TrackingProofFor(signingKey GenericKey, u2 *User) (ret *jsonw.Wrapper, err error) {
-	ret, err = u1.ProofMetadata(0, signingKey)
+	ret, err = u1.ProofMetadata(0, signingKey, nil)
 	if err == nil {
 		err = u2.ToTrackingStatement(ret.AtKey("body"))
 	}
 	return
 }
 
-func (u *User) SelfProof(signingKey GenericKey) (ret *jsonw.Wrapper, err error) {
-	ret, err = u.ProofMetadata(0, signingKey)
+func (u *User) SelfProof(signingKey GenericKey, eldest *FOKID) (ret *jsonw.Wrapper, err error) {
+	ret, err = u.ProofMetadata(0, signingKey, eldest)
 	if err == nil {
 		body := ret.AtKey("body")
 		body.SetKey("version", jsonw.NewInt(KEYBASE_SIGNATURE_V1))
@@ -217,7 +221,7 @@ func (u *User) SelfProof(signingKey GenericKey) (ret *jsonw.Wrapper, err error) 
 }
 
 func (u *User) ServiceProof(typ ServiceType, remotename string) (ret *jsonw.Wrapper, err error) {
-	ret, err = u.SelfProof(nil)
+	ret, err = u.SelfProof(nil, nil)
 	if err != nil {
 		return
 	}
@@ -243,7 +247,7 @@ func KeyToProofJson(key GenericKey) *jsonw.Wrapper {
 }
 
 func (u *User) KeyProof(newkey GenericKey, signingkey GenericKey, typ string, ei int) (ret *jsonw.Wrapper, err error) {
-	ret, err = u.ProofMetadata(ei, signingkey)
+	ret, err = u.ProofMetadata(ei, signingkey, nil)
 	if err != nil {
 		return
 	}
