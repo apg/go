@@ -70,5 +70,6 @@ func (h *MykeyHandler) DeletePrimary() (err error) {
 }
 
 func (h *MykeyHandler) Show() (err error) {
-	return libkb.ShowKeys()
+	sessionId := nextSessionId()
+	return libkb.ShowKeys(h.getLogUI(sessionId))
 }

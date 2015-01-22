@@ -565,7 +565,7 @@ func (ckf ComputedKeyFamily) DumpToLog(ui LogUI) {
 			ui.Info(" • Status=%d; Sibkey=%v; Eldest=%v",
 				info.Status, info.Sibkey, info.Eldest)
 			for k, v := range info.Delegations {
-				ui.Info("  • Delegation by KID=%s in Sig=%s", v.ToString(), k)
+				ui.Info(" • Delegation by KID=%s in Sig=%s", v.ToString(), k)
 			}
 		}
 	}
