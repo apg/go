@@ -185,7 +185,7 @@ func (k NaclSigningKeyPair) Sign(msg []byte) (ret *NaclSig, err error) {
 		HashType: HASH_PGP_SHA512,
 		Payload:  msg,
 		Kid:      k.GetKid(),
-		Detached: false,
+		Detached: true,
 	}
 	copy(ret.Sig[:], (*sig)[:])
 	return
