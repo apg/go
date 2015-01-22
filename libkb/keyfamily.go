@@ -124,6 +124,7 @@ func (kf KeyFamily) NewComputedKeyInfos() *ComputedKeyInfos {
 
 	ret := ComputedKeyInfos{
 		Infos: make(map[string]*ComputedKeyInfo),
+		Sigs:  make(map[string]*ComputedKeyInfo),
 	}
 
 	ret.Insert(kf.eldest, &ComputedKeyInfo{

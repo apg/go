@@ -732,7 +732,6 @@ func (u User) HasActiveKey() bool {
 	if ckf := u.GetComputedKeyFamily(); ckf == nil {
 		return false
 	} else {
-		fmt.Printf("Got computed key family in HasActiveKey....%+v\n", ckf)
 		return ckf.HasActiveKey()
 	}
 }
