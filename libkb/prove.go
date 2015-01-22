@@ -20,6 +20,7 @@ type ProofEngine struct {
 	LoginUI            LoginUI
 	SecretUI           SecretUI
 	LogUI              LogUI
+	signingKey         GenericKey
 }
 
 func (v *ProofEngine) Init() error {
@@ -134,23 +135,23 @@ func (v *ProofEngine) DoWarnings() (err error) {
 	return
 }
 func (v *ProofEngine) GenerateProof() (err error) {
-	var key GenericKey
 	var locked *P3SKB
 	var which string
+	var seckey GenericKey
 
 	if locked, which, err = G.Keyrings.GetSecretKeyLocked(); err != nil {
 		return
 	}
-	if key, err = locked.GetPubKey(); err != nil {
+	if v.signingKey, err = locked.GetPubKey(); err != nil {
 		return
 	}
-	if v.proof, err = v.me.ServiceProof(key, v.st, v.usernameNormalized); err != nil {
+	if v.proof, err = v.me.ServiceProof(v.signingKey, v.st, v.usernameNormalized); err != nil {
 		return
 	}
-	if key, err = locked.PromptAndUnlock("proof signature", which, v.SecretUI); err != nil {
+	if seckey, err = locked.PromptAndUnlock("proof signature", which, v.SecretUI); err != nil {
 		return
 	}
-	if v.sig, v.sigId, _, err = SignJson(v.proof, key); err != nil {
+	if v.sig, v.sigId, _, err = SignJson(v.proof, seckey); err != nil {
 		return
 	}
 	return
@@ -164,6 +165,7 @@ func (v *ProofEngine) PostProofToServer() (err error) {
 		Supersede:      v.supersede,
 		RemoteUsername: v.usernameNormalized,
 		RemoteKey:      v.st.GetApiArgKey(),
+		SigningKey:     v.signingKey,
 	}
 	v.postRes, err = PostProof(arg)
 	return
