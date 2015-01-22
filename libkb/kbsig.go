@@ -220,8 +220,8 @@ func (u *User) SelfProof(signingKey GenericKey, eldest *FOKID) (ret *jsonw.Wrapp
 	return
 }
 
-func (u *User) ServiceProof(typ ServiceType, remotename string) (ret *jsonw.Wrapper, err error) {
-	ret, err = u.SelfProof(nil, nil)
+func (u *User) ServiceProof(signingKey GenericKey, typ ServiceType, remotename string) (ret *jsonw.Wrapper, err error) {
+	ret, err = u.SelfProof(signingKey, nil)
 	if err != nil {
 		return
 	}

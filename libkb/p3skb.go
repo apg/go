@@ -195,9 +195,24 @@ func (k *P3SKBKeyringFile) Index() (err error) {
 }
 
 func (k P3SKBKeyringFile) LookupWithComputedKeyFamily(ckf *ComputedKeyFamily) *P3SKB {
+	var kid KID
+	G.Log.Debug("+ P3SKBKeyringFile.LookupWithComputedKeyFamily")
+	defer func() {
+		var res string
+		if kid != nil {
+			res = kid.ToString()
+		} else {
+			res = "<nil>"
+		}
+		G.Log.Debug("- P3SKBKeyringFile.LookupWithComputedKeyFamily -> %s\n", res)
+	}()
+	G.Log.Debug("| Checking %d possible blocks", len(k.Blocks))
 	for i := len(k.Blocks) - 1; i >= 0; i-- {
 		if key, err := k.Blocks[i].GetPubKey(); err == nil && key != nil {
-			if ckf.IsKidActive(key.GetKid()) == DLG_SIBKEY {
+			kid = key.GetKid()
+			active := ckf.IsKidActive(kid)
+			G.Log.Debug("| Checking KID: %s -> %d", kid.ToString(), int(active))
+			if active == DLG_SIBKEY {
 				return k.Blocks[i]
 			}
 		}
