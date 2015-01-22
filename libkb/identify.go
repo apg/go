@@ -12,7 +12,7 @@ func (u *User) IdentifyKey(is IdentifyState) error {
 		is.res.KeyDiff = diff
 	}
 	fokid := u.GetEldestFOKID()
-	if fokid != nil {
+	if fokid == nil {
 		return NoEldestKeyError{}
 	}
 	is.GetUI().DisplayKey(fokid.Export(), ExportTrackDiff(diff))
