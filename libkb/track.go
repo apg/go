@@ -468,7 +468,13 @@ func (e *TrackEngine) Run() (err error) {
 }
 
 func TrackStatementJSON(me, them *User) (string, error) {
-	stmt, err := me.TrackingProofFor(nil, them)
+
+	eng := NewTrackEngine(them.name, nil, nil)
+	if err := eng.GetSigningKeyPub(); err != nil {
+		return "", err
+	}
+
+	stmt, err := me.TrackingProofFor(eng.signingKeyPub, them)
 	if err != nil {
 		return "", err
 	}
