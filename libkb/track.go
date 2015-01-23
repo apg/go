@@ -393,7 +393,6 @@ func (e *TrackEngine) LoadThem() error {
 		if u, err := LoadUser(LoadUserArg{
 			Name:        e.TheirName,
 			Self:        false,
-			LoadSecrets: false,
 			ForceReload: false,
 		}); err != nil {
 			return err
@@ -406,7 +405,7 @@ func (e *TrackEngine) LoadThem() error {
 
 func (e *TrackEngine) LoadMe() error {
 	if e.Me == nil {
-		if me, err := LoadMe(LoadUserArg{LoadSecrets: true}); err != nil && e.MeRequired {
+		if me, err := LoadMe(LoadUserArg{}); err != nil && e.MeRequired {
 			return err
 		} else {
 			e.Me = me

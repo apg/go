@@ -93,7 +93,6 @@ type User struct {
 	cki *ComputedKeyInfos
 
 	loggedIn bool // if we were logged in when we loaded it
-	secret   bool // if we asked for secret keys when we loaded
 
 	dirty bool
 }
@@ -106,7 +105,6 @@ type LoadUserArg struct {
 	PublicKeyOptional bool
 	NoCacheResult     bool // currently ignore
 	Self              bool
-	LoadSecrets       bool
 	ForceReload       bool // currently ignored
 	AllKeys           bool
 }
@@ -208,7 +206,6 @@ func NewUser(o *jsonw.Wrapper) (*User, error) {
 		name:        name,
 		loggedIn:    false,
 		dirty:       false,
-		secret:      false,
 	}, nil
 }
 
@@ -240,7 +237,7 @@ func NewUserFromLocalStorage(o *jsonw.Wrapper) (*User, error) {
 	return u, err
 }
 
-func LoadUserFromLocalStorage(uid UID, allKeys bool, loadSecrets bool) (u *User, err error) {
+func LoadUserFromLocalStorage(uid UID, allKeys bool) (u *User, err error) {
 
 	uid_s := uid.ToString()
 	G.Log.Debug("+ LoadUserFromLocalStorage(%s)", uid_s)
@@ -256,17 +253,6 @@ func LoadUserFromLocalStorage(uid UID, allKeys bool, loadSecrets bool) (u *User,
 	}
 
 	G.Log.Debug("| Loaded successfully")
-
-	if !loadSecrets {
-		G.Log.Debug("| Not loading private keys for user")
-	} else if sk, err := G.LocalDb.Get(DbKey{Typ: DB_USER_SECRET_KEYS, Key: uid_s}); err != nil {
-		return nil, err
-	} else if sk != nil {
-		G.Log.Debug("| Found secret keys for user %s", uid_s)
-		jw.SetKey("private_keys", sk)
-	} else {
-		G.Log.Debug("| Didn't find secret keys for user %s", uid_s)
-	}
 
 	if u, err = NewUserFromLocalStorage(jw); err != nil {
 		return nil, err
@@ -320,13 +306,13 @@ func (u User) GetActivePgpFingerprints(sibkey bool) (ret []PgpFingerprint) {
 func LoadUserFromServer(arg LoadUserArg, body *jsonw.Wrapper) (u *User, err error) {
 
 	uid_s := arg.Uid.ToString()
-	G.Log.Debug("+ Load User from server: %s (secrets=%v)", uid_s, arg.LoadSecrets)
+	G.Log.Debug("+ Load User from server: %s", uid_s)
 
 	// Res.body might already have been preloaded a a result of a Resolve call earlier.
 	if body == nil {
 		res, err := G.API.Get(ApiArg{
 			Endpoint:    "user/lookup",
-			NeedSession: (arg.LoadSecrets && arg.Self),
+			NeedSession: false,
 			Args: HttpArgs{
 				"uid": S{uid_s},
 			},
@@ -423,10 +409,6 @@ func (u *User) Store() error {
 		return err
 	}
 
-	if err := u.StoreSecretKeys(); err != nil {
-		return err
-	}
-
 	u.dirty = false
 	G.Log.Debug("- Store user %s -> OK", u.name)
 
@@ -492,21 +474,6 @@ func (u *User) GetSyncedSecretKey() (ret *P3SKB, err error) {
 
 	err = NoKeyError{"No synchronized public key"}
 	return
-}
-
-func (u *User) StoreSecretKeys() error {
-	var err error
-	G.Log.Debug("+ StoreSecretKey()")
-	if u.privateKeys != nil && !u.privateKeys.IsNil() {
-		G.Log.Debug("| doing put")
-		err = G.LocalDb.Put(
-			DbKey{Typ: DB_USER_SECRET_KEYS, Key: u.id.ToString()},
-			nil,
-			u.privateKeys,
-		)
-	}
-	G.Log.Debug("- StoreSecretKey() -> %s", ErrToOk(err))
-	return err
 }
 
 func LookupMerkleLeaf(uid UID, local *User) (f *MerkleUserLeaf, err error) {
@@ -614,9 +581,9 @@ func LoadUser(arg LoadUserArg) (ret *User, err error) {
 
 	var local, remote *User
 
-	if local = G.UserCache.Get(uid); local != nil && (local.secret || !arg.LoadSecrets) {
+	if local = G.UserCache.Get(uid); local != nil {
 		G.Log.Debug("| Found user in user cache: %s", uid_s)
-	} else if local, err = LoadUserFromLocalStorage(uid, arg.AllKeys, arg.LoadSecrets); err != nil {
+	} else if local, err = LoadUserFromLocalStorage(uid, arg.AllKeys); err != nil {
 		G.Log.Warning("Failed to load %s from storage: %s",
 			uid_s, err.Error())
 	}
@@ -654,9 +621,6 @@ func LoadUser(arg LoadUserArg) (ret *User, err error) {
 	if err = ret.LoadSigChains(arg.AllKeys, leaf); err != nil {
 		return
 	}
-
-	// Note whether we asked for loading secrets or not...
-	ret.secret = arg.LoadSecrets
 
 	if ret.sigHints, err = LoadAndRefreshSigHints(ret.id); err != nil {
 		return

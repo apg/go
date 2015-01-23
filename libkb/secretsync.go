@@ -3,6 +3,7 @@
 package libkb
 
 import (
+	"fmt"
 	"sync"
 )
 
@@ -28,7 +29,7 @@ type ServerPrivateKeys struct {
 type SecretSyncer struct {
 	// Locks the whole object
 	sync.Mutex
-	Uid    UID
+	Uid    *UID
 	loaded bool
 	dirty  bool
 	keys   ServerPrivateKeys
@@ -36,10 +37,16 @@ type SecretSyncer struct {
 
 // Load loads a set of secret keys from storage and then checks if there are
 // updates on the server.  If there are, it will sync and store them.
-func (ss *SecretSyncer) Load() (err error) {
+func (ss *SecretSyncer) Load(uid UID) (err error) {
 
 	ss.Lock()
 	defer ss.Unlock()
+
+	if ss.Uid != nil && !ss.Uid.Eq(uid) {
+		err = UidMismatchError{fmt.Sprintf("%s != %s", ss.Uid.ToString(), uid.ToString())}
+		return
+	}
+	ss.Uid = &uid
 
 	if err = ss.loadFromStorage(); err != nil {
 		return
