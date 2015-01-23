@@ -74,10 +74,9 @@ func GetUidVoid(w *jsonw.Wrapper, u *UID, e *error) {
 
 type User struct {
 	// Raw JSON element read from the server or our local DB.
-	basics      *jsonw.Wrapper
-	publicKeys  *jsonw.Wrapper
-	sigs        *jsonw.Wrapper
-	privateKeys *jsonw.Wrapper
+	basics     *jsonw.Wrapper
+	publicKeys *jsonw.Wrapper
+	sigs       *jsonw.Wrapper
 
 	// Processed fields
 	id       UID
@@ -197,15 +196,14 @@ func NewUser(o *jsonw.Wrapper) (*User, error) {
 	}
 
 	return &User{
-		basics:      o.AtKey("basics"),
-		publicKeys:  o.AtKey("public_keys"),
-		sigs:        o.AtKey("sigs"),
-		privateKeys: o.AtKey("private_keys"),
-		keyFamily:   kf,
-		id:          *uid,
-		name:        name,
-		loggedIn:    false,
-		dirty:       false,
+		basics:     o.AtKey("basics"),
+		publicKeys: o.AtKey("public_keys"),
+		sigs:       o.AtKey("sigs"),
+		keyFamily:  kf,
+		id:         *uid,
+		name:       name,
+		loggedIn:   false,
+		dirty:      false,
 	}, nil
 }
 
@@ -454,9 +452,7 @@ func (u *User) GetSyncedSecretKey() (ret *P3SKB, err error) {
 		G.Log.Debug("- User.GetSyncedSecretKey() -> %s", ErrToOk(err))
 	}()
 
-	l, e := u.privateKeys.Len()
-	if e != nil || l == 0 {
-		G.Log.Debug("| short-circuit; no privateKeys object found")
+	if err = G.SecretSyncer.Load(u.id); err != nil {
 		return
 	}
 
@@ -466,13 +462,7 @@ func (u *User) GetSyncedSecretKey() (ret *P3SKB, err error) {
 		return
 	}
 
-	for i := 0; i < l; i++ {
-		if ret, e = getSecretKey(u.privateKeys.AtIndex(i), ckf); ret != nil && e == nil {
-			return
-		}
-	}
-
-	err = NoKeyError{"No synchronized public key"}
+	ret, err = G.SecretSyncer.FindActiveKey(ckf)
 	return
 }
 

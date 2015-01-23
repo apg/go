@@ -42,6 +42,13 @@ func (ss *SecretSyncer) Load(uid UID) (err error) {
 	ss.Lock()
 	defer ss.Unlock()
 
+	uid_s := uid.ToString()
+
+	G.Log.Debug("+ SecretSyncer.Load(%s)", uid_s)
+	defer func() {
+		G.Log.Debug("- SecretSyncer.Load(%s) -> %s", uid_s, ErrToOk(err))
+	}()
+
 	if ss.Uid != nil && !ss.Uid.Eq(uid) {
 		err = UidMismatchError{fmt.Sprintf("%s != %s", ss.Uid.ToString(), uid.ToString())}
 		return
@@ -62,6 +69,10 @@ func (ss *SecretSyncer) Load(uid UID) (err error) {
 
 func (ss *SecretSyncer) loadFromStorage() (err error) {
 	ss.loaded, err = G.LocalDb.GetInto(&ss.keys, ss.dbKey())
+	G.Log.Debug("| loadFromStorage -> %s, %s", ss.loaded, ErrToOk(err))
+	if ss.loaded {
+		G.Log.Debug("| Loaded version %d", ss.keys.Version)
+	}
 	return
 }
 
@@ -77,10 +88,12 @@ func (ss *SecretSyncer) syncFromServer() (err error) {
 		NeedSession: true,
 		DecodeTo:    &obj,
 	})
+	G.Log.Debug("| syncFromServer -> %s", ErrToOk(err))
 	if err != nil {
 		return
 	}
 	if !ss.loaded || obj.Version > ss.keys.Version {
+		G.Log.Debug("| upgrade to version -> %d", obj.Version)
 		ss.keys = obj
 		ss.dirty = true
 	}
@@ -101,4 +114,31 @@ func (ss *SecretSyncer) store() (err error) {
 	}
 	ss.dirty = false
 	return
+}
+
+// FindActiveKey examines the synced keys, looking for one that's currently active.
+func (ss *SecretSyncer) FindActiveKey(ckf *ComputedKeyFamily) (ret *P3SKB, err error) {
+	for _, key := range ss.keys.PrivateKeys {
+		if ret, _ = key.FindActiveKey(ckf); ret != nil {
+			return
+		}
+	}
+	err = NoKeyError{"No sync'ed keys match our ComputedKeyFamily"}
+	return
+}
+
+func (k *ServerPrivateKey) FindActiveKey(ckf *ComputedKeyFamily) (ret *P3SKB, err error) {
+	var kid KID
+	var packet *KeybasePacket
+
+	if kid, err = ImportKID(k.Kid); err != nil {
+		return
+	}
+	if ckf.IsKidActive(kid) != DLG_SIBKEY {
+		return
+	}
+	if packet, err = DecodeArmoredPacket(k.Bundle); err != nil && packet == nil {
+		return
+	}
+	return packet.ToP3SKB()
 }
