@@ -26,7 +26,6 @@ func (s *KeyPullState) loadUser() (err error) {
 	// Need user eventually
 	s.user, err = LoadUser(LoadUserArg{
 		PublicKeyOptional: true,
-		LoadSecrets:       true,
 	})
 	return err
 }
