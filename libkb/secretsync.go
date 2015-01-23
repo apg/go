@@ -54,8 +54,7 @@ func (ss *SecretSyncer) Load() (err error) {
 }
 
 func (ss *SecretSyncer) loadFromStorage() (err error) {
-	ss.loaded, err = G.LocalDb.GetInto(&ss.keys,
-		DbKey{Typ: DB_USER_SECRET_KEYS, Key: ss.Uid.ToString()})
+	ss.loaded, err = G.LocalDb.GetInto(&ss.keys, ss.dbKey())
 	return
 }
 
@@ -71,16 +70,28 @@ func (ss *SecretSyncer) syncFromServer() (err error) {
 		NeedSession: true,
 		DecodeTo:    &obj,
 	})
+	if err != nil {
+		return
+	}
 	if !ss.loaded || obj.Version > ss.keys.Version {
 		ss.keys = obj
 		ss.dirty = true
 	}
+	ss.loaded = true
 	return
 }
 
-func (ss *SecretSyncer) store() (err error) {
-	if ss.dirty {
+func (ss *SecretSyncer) dbKey() DbKey {
+	return DbKey{Typ: DB_USER_SECRET_KEYS, Key: ss.Uid.ToString()}
+}
 
+func (ss *SecretSyncer) store() (err error) {
+	if !ss.dirty {
+		return
 	}
+	if err = G.LocalDb.PutObj(ss.dbKey(), nil, ss.keys); err != nil {
+		return
+	}
+	ss.dirty = false
 	return
 }
