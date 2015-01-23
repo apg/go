@@ -22,7 +22,7 @@ type ServerPrivateKeyMap map[string]ServerPrivateKey
 type ServerPrivateKeys struct {
 	Status      ApiStatus           `json:"status"`
 	Version     int                 `json:"version"`
-	Mtime       int                 `json:"mtime"`
+	Mtime       *int                `json:"mtime"`
 	PrivateKeys ServerPrivateKeyMap `json:"private_keys"`
 }
 
@@ -69,7 +69,7 @@ func (ss *SecretSyncer) Load(uid UID) (err error) {
 
 func (ss *SecretSyncer) loadFromStorage() (err error) {
 	ss.loaded, err = G.LocalDb.GetInto(&ss.keys, ss.dbKey())
-	G.Log.Debug("| loadFromStorage -> %s, %s", ss.loaded, ErrToOk(err))
+	G.Log.Debug("| loadFromStorage -> %v, %s", ss.loaded, ErrToOk(err))
 	if ss.loaded {
 		G.Log.Debug("| Loaded version %d", ss.keys.Version)
 	}
@@ -81,17 +81,22 @@ func (ss *SecretSyncer) syncFromServer() (err error) {
 	if ss.loaded {
 		hargs.Add("version", I{ss.keys.Version})
 	}
-	var obj ServerPrivateKeys
-	_, err = G.API.Get(ApiArg{
+	var res *ApiRes
+	res, err = G.API.Get(ApiArg{
 		Endpoint:    "key/fetch_private",
 		Args:        hargs,
 		NeedSession: true,
-		DecodeTo:    &obj,
 	})
 	G.Log.Debug("| syncFromServer -> %s", ErrToOk(err))
 	if err != nil {
 		return
 	}
+
+	var obj ServerPrivateKeys
+	if err = res.Body.UnmarshalAgain(&obj); err != nil {
+		return
+	}
+
 	if !ss.loaded || obj.Version > ss.keys.Version {
 		G.Log.Debug("| upgrade to version -> %d", obj.Version)
 		ss.keys = obj

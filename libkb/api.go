@@ -146,12 +146,8 @@ func doRequestShared(api Requester, arg ApiArg, req *http.Request, wantJsonRes b
 
 		decoder := json.NewDecoder(resp.Body)
 		var obj interface{}
-		decodeTo := arg.DecodeTo
-		if decodeTo == nil {
-			decodeTo = &obj
-			decoder.UseNumber()
-		}
-		err = decoder.Decode(decodeTo)
+		decoder.UseNumber()
+		err = decoder.Decode(&obj)
 		resp.Body.Close()
 		if err != nil {
 			err = fmt.Errorf("Error in parsing JSON reply from server: %s", err.Error())

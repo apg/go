@@ -657,3 +657,13 @@ func (r KeyRevokedError) Error() string {
 }
 
 //=============================================================================
+
+type UnknownKeyTypeError struct {
+	typ int
+}
+
+func (e UnknownKeyTypeError) Error() string {
+	return fmt.Sprintf("Unknown key type: %d", e.typ)
+}
+
+//=============================================================================

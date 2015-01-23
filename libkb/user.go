@@ -433,19 +433,6 @@ func (u *User) StoreTopLevel() error {
 	return err
 }
 
-func getSecretKey(jw *jsonw.Wrapper, ckf *ComputedKeyFamily) (ret *P3SKB, err error) {
-	var packet *KeybasePacket
-	var key GenericKey
-
-	if packet, err = GetPacket(jw.AtKey("bundle")); err != nil {
-	} else if ret, err = packet.ToP3SKB(); err != nil {
-	} else if key, err = ret.GetPubKey(); err != nil {
-	} else if ckf.IsKidActive(key.GetKid()) != DLG_SIBKEY {
-		ret = nil
-	}
-	return
-}
-
 func (u *User) GetSyncedSecretKey() (ret *P3SKB, err error) {
 	G.Log.Debug("+ User.GetSyncedSecretKey()")
 	defer func() {
