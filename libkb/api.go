@@ -46,6 +46,11 @@ func NewApiEngines(e Env) (*InternalApiEngine, *ExternalApiEngine, error) {
 	return i, x, nil
 }
 
+type ApiStatus struct {
+	Code int    `json:"code"`
+	Name string `json:"name"`
+}
+
 //============================================================================
 // Errors
 
@@ -141,8 +146,12 @@ func doRequestShared(api Requester, arg ApiArg, req *http.Request, wantJsonRes b
 
 		decoder := json.NewDecoder(resp.Body)
 		var obj interface{}
-		decoder.UseNumber()
-		err = decoder.Decode(&obj)
+		decodeTo := arg.DecodeTo
+		if decodeTo == nil {
+			decodeTo = &obj
+			decoder.UseNumber()
+		}
+		err = decoder.Decode(decodeTo)
 		resp.Body.Close()
 		if err != nil {
 			err = fmt.Errorf("Error in parsing JSON reply from server: %s", err.Error())
